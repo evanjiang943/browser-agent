@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Add rate limiting to payment processor #42 - example-org/example-repo</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; color: #1f2328; background: #f6f8fa; line-height: 1.5; }
+  a { color: #0969da; text-decoration: none; }
+  a:hover { text-decoration: underline; }
+
+  .header { background: #24292f; color: #fff; padding: 12px 24px; font-size: 14px; }
+  .header a { color: #fff; }
+  .header .sep { color: #8b949e; margin: 0 4px; }
+
+  .container { max-width: 1012px; margin: 0 auto; padding: 24px 16px; }
+  .pr-header { margin-bottom: 16px; border-bottom: 1px solid #d0d7de; padding-bottom: 16px; }
+  .pr-title { font-size: 26px; font-weight: 400; }
+  .pr-title .number { color: #656d76; }
+  .pr-meta { margin-top: 8px; font-size: 14px; color: #656d76; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+
+  .badge { display: inline-flex; align-items: center; gap: 4px; padding: 2px 10px; border-radius: 12px; font-size: 13px; font-weight: 600; }
+  .badge-merged { background: #8250df; color: #fff; }
+  .badge-open { background: #1a7f37; color: #fff; }
+
+  .layout { display: flex; gap: 24px; }
+  .main { flex: 1; min-width: 0; }
+  .sidebar { width: 260px; flex-shrink: 0; }
+
+  .card { background: #fff; border: 1px solid #d0d7de; border-radius: 6px; margin-bottom: 16px; }
+  .card-header { padding: 12px 16px; font-size: 14px; font-weight: 600; border-bottom: 1px solid #d0d7de; background: #f6f8fa; border-radius: 6px 6px 0 0; }
+  .card-body { padding: 16px; font-size: 14px; }
+
+  .pr-body p { margin-bottom: 12px; }
+  .pr-body code { background: #eff1f3; padding: 2px 6px; border-radius: 4px; font-size: 13px; }
+
+  .sidebar-section { margin-bottom: 16px; padding-bottom: 16px; border-bottom: 1px solid #d0d7de; }
+  .sidebar-section:last-child { border-bottom: none; }
+  .sidebar-label { font-size: 12px; font-weight: 600; color: #656d76; text-transform: uppercase; margin-bottom: 6px; }
+
+  .reviewer { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; font-size: 14px; }
+  .reviewer .status-approved { color: #1a7f37; font-weight: 600; }
+  .reviewer .status-changes { color: #cf222e; font-weight: 600; }
+  .avatar { width: 20px; height: 20px; border-radius: 50%; background: #ddd; display: inline-block; text-align: center; font-size: 11px; line-height: 20px; color: #656d76; }
+
+  .check-item { display: flex; align-items: center; gap: 8px; padding: 8px 16px; border-bottom: 1px solid #d0d7de; font-size: 14px; }
+  .check-item:last-child { border-bottom: none; }
+  .check-icon { width: 18px; height: 18px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; color: #fff; flex-shrink: 0; }
+  .check-pass { background: #1a7f37; }
+  .check-fail { background: #cf222e; }
+  .check-name { flex: 1; }
+  .check-required { font-size: 12px; color: #656d76; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <a href="#">example-org</a><span class="sep">/</span><a href="#">example-repo</a>
+</div>
+
+<div class="container">
+
+  <!-- PR Header -->
+  <div class="pr-header" data-pr-number="42">
+    <h1 class="pr-title">Add rate limiting to payment processor <span class="number">#42</span></h1>
+    <div class="pr-meta">
+      <span class="merge-status badge badge-merged" data-status="merged">Merged</span>
+      <span><a class="pr-author" href="#" data-user="alice">alice</a> merged 3 commits into <code>main</code> from <code>feature/rate-limit</code></span>
+    </div>
+  </div>
+
+  <div class="layout">
+
+    <!-- Main Content -->
+    <div class="main">
+
+      <!-- PR Body / Description -->
+      <div class="card">
+        <div class="card-header">Description</div>
+        <div class="card-body pr-body" data-section="description">
+          <p>Adds token-bucket rate limiting to the payment processor to prevent downstream service overload during peak traffic.</p>
+          <p>Resolves <a href="https://acme-corp.atlassian.net/browse/ENG-123">ENG-123</a></p>
+          <p>Related to <a href="https://acme-corp.atlassian.net/browse/ENG-456">ENG-456</a></p>
+          <p>Changes include:</p>
+          <ul style="margin-left: 20px; margin-bottom: 12px;">
+            <li>New <code>RateLimiter</code> class with configurable window and burst</li>
+            <li>Integration with <code>PaymentGateway.process()</code></li>
+            <li>Unit and integration tests</li>
+          </ul>
+        </div>
+      </div>
+
+      <!-- CI Checks -->
+      <div class="card" data-section="checks">
+        <div class="card-header">Checks <span style="font-weight:400; color:#656d76;">— 3 of 3 required checks passed</span></div>
+        <div class="check-item" data-check="ci/tests" data-status="pass" data-required="true">
+          <span class="check-icon check-pass">✓</span>
+          <span class="check-name">ci/tests</span>
+          <span class="check-required">Required</span>
+        </div>
+        <div class="check-item" data-check="ci/lint" data-status="pass" data-required="true">
+          <span class="check-icon check-pass">✓</span>
+          <span class="check-name">ci/lint</span>
+          <span class="check-required">Required</span>
+        </div>
+        <div class="check-item" data-check="security-scan" data-status="fail" data-required="true">
+          <span class="check-icon check-fail">✗</span>
+          <span class="check-name">security-scan</span>
+          <span class="check-required">Required</span>
+        </div>
+        <div class="check-item" data-check="deploy-preview" data-status="pass" data-required="false">
+          <span class="check-icon check-pass">✓</span>
+          <span class="check-name">deploy-preview</span>
+          <span class="check-required" style="color:#8b949e;">Optional</span>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Sidebar -->
+    <div class="sidebar">
+      <div class="card">
+        <div class="card-body">
+
+          <div class="sidebar-section" data-section="reviewers">
+            <div class="sidebar-label">Reviewers</div>
+            <div class="reviewer" data-user="bob" data-review="approved">
+              <span class="avatar">B</span>
+              <span>bob</span>
+              <span class="status-approved">Approved</span>
+            </div>
+            <div class="reviewer" data-user="carol" data-review="approved">
+              <span class="avatar">C</span>
+              <span>carol</span>
+              <span class="status-approved">Approved</span>
+            </div>
+          </div>
+
+          <div class="sidebar-section" data-section="merged-by">
+            <div class="sidebar-label">Merged by</div>
+            <div class="reviewer" data-user="dave">
+              <span class="avatar">D</span>
+              <span>dave</span>
+            </div>
+          </div>
+
+          <div class="sidebar-section" data-section="labels">
+            <div class="sidebar-label">Labels</div>
+            <span style="background:#ddf4ff; color:#0969da; padding:2px 8px; border-radius:12px; font-size:12px; font-weight:500;">enhancement</span>
+          </div>
+
+          <div class="sidebar-section" data-section="branch">
+            <div class="sidebar-label">Branch</div>
+            <code style="font-size:13px;">feature/rate-limit</code> → <code style="font-size:13px;">main</code>
+          </div>
+
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+</body>
+</html>

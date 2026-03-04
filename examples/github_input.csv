@@ -1,4 +1,4 @@
 pr_url,commit_url
-https://github.com/org/repo/pull/1,
-https://github.com/org/repo/pull/2,
-,https://github.com/org/repo/commit/abc123
+https://github.com/example-org/example-repo/pull/1,https://github.com/example-org/example-repo/commit/abc1234
+https://github.com/example-org/example-repo/pull/2,https://github.com/example-org/example-repo/commit/def5678
+https://github.com/example-org/example-repo/pull/3,https://github.com/example-org/example-repo/commit/ghi9012
