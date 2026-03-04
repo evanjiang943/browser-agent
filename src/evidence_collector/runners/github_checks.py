@@ -24,7 +24,7 @@ from evidence_collector.utils.retry import retry_async
 from evidence_collector.utils.throttling import CircuitBreaker, Throttle
 from evidence_collector.utils.time import now_filename_stamp, now_iso
 
-from .base import BaseRunner
+from .base import PlaybookRunner
 
 logger = logging.getLogger(__name__)
 
@@ -47,7 +47,7 @@ RESULT_COLUMNS = [
 ]
 
 
-class GitHubChecksRunner(BaseRunner):
+class GitHubChecksRunner(PlaybookRunner):
     """Playbook B: PR/commit evidence with checks, CI, and Jira traversal."""
 
     @property

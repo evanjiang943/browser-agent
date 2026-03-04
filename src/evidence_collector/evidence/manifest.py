@@ -12,6 +12,15 @@ from pydantic import BaseModel
 from typing import Literal
 
 
+class SubItemNotes(BaseModel):
+    """State for a single sub-item within a sample."""
+
+    status: Literal["pending", "success", "failed"] = "pending"
+    state: dict = {}
+    screenshots: list[str] = []
+    errors: list[str] = []
+
+
 class SampleNotes(BaseModel):
     sample_id: str
     status: Literal["pending", "success", "failed", "partial"]
@@ -19,6 +28,7 @@ class SampleNotes(BaseModel):
     errors: list[str] = []
     screenshots: list[str] = []
     downloads: list[str] = []
+    sub_items: dict[str, SubItemNotes] = {}
 
 
 class RunManifest(BaseModel):

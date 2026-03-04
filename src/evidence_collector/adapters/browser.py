@@ -12,12 +12,147 @@ from __future__ import annotations
 
 import logging
 import re
+from dataclasses import dataclass, field
 from pathlib import Path
+from typing import Any, Callable
 from urllib.parse import urlparse
 
+import aiohttp
 from playwright.async_api import Page, async_playwright
 
 logger = logging.getLogger(__name__)
+
+
+# ── Generic extraction primitives ───────────────────────────────────────
+
+
+@dataclass
+class ExtractionRule:
+    """Declarative rule for extracting a single field from a page.
+
+    *selectors* are tried in order; the text content of the first match wins.
+    If all selectors miss, *fallback_pattern* (a regex) is applied to the
+    visible page text.  *transform* post-processes the extracted string.
+    If *required* is True, a warning is logged on miss (but no exception).
+    """
+
+    field: str
+    selectors: list[str] = field(default_factory=list)
+    fallback_pattern: str | None = None
+    transform: Callable[[str], str] | None = None
+    required: bool = False
+
+
+async def extract_fields(page: Page, rules: list[ExtractionRule]) -> dict[str, str]:
+    """Extract multiple fields from *page* according to *rules*.
+
+    Returns ``{rule.field: value}`` for every rule.  Missing fields
+    are returned as empty strings.
+    """
+    body_text: str | None = None  # lazy — only fetched if a fallback needs it
+    result: dict[str, str] = {}
+
+    for rule in rules:
+        value = ""
+
+        # 1. Try each CSS selector in order
+        for selector in rule.selectors:
+            el = await page.query_selector(selector)
+            if el is not None:
+                value = (await el.inner_text()).strip()
+                if value:
+                    break
+
+        # 2. Fallback to regex on visible text
+        if not value and rule.fallback_pattern is not None:
+            if body_text is None:
+                body_text = await page.inner_text("body")
+            m = re.search(rule.fallback_pattern, body_text)
+            if m:
+                value = m.group(1) if m.lastindex else m.group(0)
+                value = value.strip()
+
+        # 3. Log if required and still missing
+        if not value and rule.required:
+            logger.warning("Required field %r not found on page", rule.field)
+
+        # 4. Apply transform
+        if value and rule.transform is not None:
+            value = rule.transform(value)
+
+        result[rule.field] = value
+
+    return result
+
+
+async def find_links_matching(page: Page, patterns: list[str]) -> list[str]:
+    """Return deduplicated hrefs matching any of *patterns* (regexes).
+
+    Links are returned in DOM order, deduplicated by first occurrence.
+    """
+    elements = await page.query_selector_all("a[href]")
+    compiled = [re.compile(p) for p in patterns]
+    seen: set[str] = set()
+    matched: list[str] = []
+
+    for el in elements:
+        href = await el.get_attribute("href")
+        if not href or href in seen:
+            continue
+        for pat in compiled:
+            if pat.search(href):
+                seen.add(href)
+                matched.append(href)
+                break
+
+    return matched
+
+
+async def verify_url(
+    url: str, session: aiohttp.ClientSession
+) -> dict[str, Any]:
+    """Verify that *url* is reachable via HEAD (fallback GET).
+
+    Returns::
+
+        {"url": ..., "status_code": ..., "alive": bool,
+         "redirect_url": str | None, "error": str | None}
+
+    Timeout is 10 s.  No retries — the caller is responsible.
+    """
+    timeout = aiohttp.ClientTimeout(total=10)
+    redirect_url: str | None = None
+    try:
+        async with session.head(
+            url, allow_redirects=True, timeout=timeout
+        ) as resp:
+            status = resp.status
+            if str(resp.url) != url:
+                redirect_url = str(resp.url)
+            # Retry with GET if HEAD returns 405 Method Not Allowed
+            if status == 405:
+                async with session.get(
+                    url, allow_redirects=True, timeout=timeout
+                ) as resp2:
+                    status = resp2.status
+                    if str(resp2.url) != url:
+                        redirect_url = str(resp2.url)
+    except Exception as exc:
+        return {
+            "url": url,
+            "status_code": None,
+            "alive": False,
+            "redirect_url": None,
+            "error": str(exc),
+        }
+
+    return {
+        "url": url,
+        "status_code": status,
+        "alive": 200 <= status < 400,
+        "redirect_url": redirect_url,
+        "error": None,
+    }
 
 
 class LoginRedirectError(Exception):

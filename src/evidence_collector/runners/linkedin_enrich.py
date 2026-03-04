@@ -5,10 +5,10 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
-from .base import BaseRunner
+from .base import PlaybookRunner
 
 
-class LinkedInEnrichRunner(BaseRunner):
+class LinkedInEnrichRunner(PlaybookRunner):
     """Playbook C: enrich CSV with LinkedIn profile data."""
 
     @property

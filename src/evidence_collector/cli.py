@@ -34,6 +34,7 @@ PLAYBOOK_COLUMNS: dict[str, list[str]] = {
 
 # Playbooks with implemented runners. Values are import paths.
 PLAYBOOK_RUNNERS: dict[str, str] = {
+    "tickets": "evidence_collector.runners.tickets:TicketsRunner",
     "github-checks": "evidence_collector.runners.github_checks:GitHubChecksRunner",
     "code-recency": "evidence_collector.runners.code_recency:CodeRecencyRunner",
 }

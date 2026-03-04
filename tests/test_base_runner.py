@@ -5,10 +5,10 @@ from pathlib import Path
 
 import pytest
 
-from evidence_collector.runners.base import BaseRunner
+from evidence_collector.runners.base import PlaybookRunner
 
 
-class ConcreteRunner(BaseRunner):
+class ConcreteRunner(PlaybookRunner):
     """Minimal concrete subclass for testing."""
 
     @property
@@ -24,7 +24,7 @@ class ConcreteRunner(BaseRunner):
 
 class TestPlaybookNameAbstract:
     def test_cannot_instantiate_without_playbook_name(self):
-        class Incomplete(BaseRunner):
+        class Incomplete(PlaybookRunner):
             def load_samples(self):
                 return []
 

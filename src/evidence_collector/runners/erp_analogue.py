@@ -5,10 +5,10 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
-from .base import BaseRunner
+from .base import PlaybookRunner
 
 
-class ERPAnalogueRunner(BaseRunner):
+class ERPAnalogueRunner(PlaybookRunner):
     """Playbook E: fill form, screenshot, download report and attachments."""
 
     @property

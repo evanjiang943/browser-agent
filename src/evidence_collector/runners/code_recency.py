@@ -24,7 +24,7 @@ from evidence_collector.utils.retry import retry_async
 from evidence_collector.utils.throttling import CircuitBreaker, Throttle
 from evidence_collector.utils.time import is_within_window, now_filename_stamp, now_iso
 
-from .base import BaseRunner
+from .base import PlaybookRunner
 
 logger = logging.getLogger(__name__)
 
@@ -47,7 +47,7 @@ RESULT_COLUMNS = [
 ]
 
 
-class CodeRecencyRunner(BaseRunner):
+class CodeRecencyRunner(PlaybookRunner):
     """Playbook D: git blame analysis for code snippet recency and materiality."""
 
     @property
