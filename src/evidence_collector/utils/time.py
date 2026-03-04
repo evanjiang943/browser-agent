@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timezone
 
 
 def now_iso() -> str:
@@ -13,8 +13,7 @@ def now_iso() -> str:
 
 def now_filename_stamp() -> str:
     """Return current time formatted for filenames: YYYYMMDD-HHMMSS."""
-    # TODO: return formatted timestamp string
-    raise NotImplementedError
+    return datetime.now(timezone.utc).strftime("%Y%m%d-%H%M%S")
 
 
 def is_within_window(date_str: str, window_days: int) -> bool:
