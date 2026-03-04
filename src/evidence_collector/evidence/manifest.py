@@ -9,6 +9,18 @@ from pathlib import Path
 from pydantic import BaseModel
 
 
+from typing import Literal
+
+
+class SampleNotes(BaseModel):
+    sample_id: str
+    status: Literal["pending", "success", "failed", "partial"]
+    steps_completed: list[str] = []
+    errors: list[str] = []
+    screenshots: list[str] = []
+    downloads: list[str] = []
+
+
 class RunManifest(BaseModel):
     run_id: str
     playbook: str
