@@ -1,0 +1,31 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.backends"
+
+[project]
+name = "evidence-collector"
+version = "0.1.0"
+description = "Browser-based audit evidence collection agent"
+requires-python = ">=3.11"
+dependencies = [
+    "typer>=0.9",
+    "playwright>=1.40",
+    "pandas>=2.1",
+    "openpyxl>=3.1",
+    "pydantic>=2.5",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0",
+    "pytest-asyncio>=0.23",
+]
+
+[project.scripts]
+evidence-collector = "evidence_collector.cli:app"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/evidence_collector"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
