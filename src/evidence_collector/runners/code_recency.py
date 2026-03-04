@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import asyncio
 import logging
 from pathlib import Path
 from typing import Any
@@ -14,15 +13,11 @@ from evidence_collector.adapters.browser import (
 )
 from evidence_collector.adapters.github import GitHubAdapter
 from evidence_collector.config import RunConfig
-from evidence_collector.evidence.logging import RunLogger
-from evidence_collector.evidence.manifest import RunManifest, SampleNotes, write_manifest
+from evidence_collector.evidence.manifest import SampleNotes
 from evidence_collector.evidence.naming import screenshot_filename
-from evidence_collector.io.csv_utils import write_results_csv
-from evidence_collector.io.paths import read_notes, setup_run_dir, setup_sample_dir, write_notes
+from evidence_collector.io.paths import setup_sample_dir, write_notes
 from evidence_collector.io.spreadsheets import load_code_recency_samples
-from evidence_collector.utils.retry import retry_async
-from evidence_collector.utils.throttling import CircuitBreaker, Throttle
-from evidence_collector.utils.time import is_within_window, now_filename_stamp, now_iso
+from evidence_collector.utils.time import is_within_window
 
 from .base import PlaybookRunner
 
@@ -54,8 +49,15 @@ class CodeRecencyRunner(PlaybookRunner):
     def playbook_name(self) -> str:
         return "code-recency"
 
+    @property
+    def result_columns(self) -> list[str]:
+        return RESULT_COLUMNS
+
     def load_samples(self) -> list[dict]:
         return load_code_recency_samples(self.input_path)
+
+    def create_adapters(self, config: RunConfig, browser_adapter: BrowserAdapter) -> None:
+        self._github_adapter = GitHubAdapter(browser_adapter)
 
     async def process_sample(self, sample: dict) -> dict:
         sample_id = sample["sample_id"]
@@ -263,129 +265,3 @@ class CodeRecencyRunner(PlaybookRunner):
 
         return result
 
-    async def _run_async(self) -> None:
-        config = self.config if isinstance(self.config, RunConfig) else RunConfig()
-        started_at = now_iso()
-        run_id = f"code-recency-{now_filename_stamp()}"
-
-        out_dir = setup_run_dir(self.output_dir, self.playbook_name, run_id)
-        run_logger = RunLogger(out_dir)
-        evidence_dir = out_dir / "evidence" / self.playbook_name
-
-        browser_adapter = BrowserAdapter(
-            profile_dir=Path(config.browser.profile_dir) if config.browser.profile_dir else None,
-            headless=config.browser.headless,
-            timeout=config.browser.timeout_ms,
-        )
-        github_adapter = GitHubAdapter(browser_adapter)
-
-        samples = self.load_samples()
-        if not samples:
-            write_results_csv(out_dir / "results.csv", [])
-            run_logger.log("run_end", detail="no samples")
-            return
-
-        # Set instance attrs for process_sample
-        self._browser_adapter = browser_adapter
-        self._github_adapter = github_adapter
-        self._evidence_dir = evidence_dir
-        self._screenshot_mode = config.screenshot.mode
-
-        throttle = Throttle(max_per_minute=config.throttle.max_pages_per_minute)
-        circuit_breaker = CircuitBreaker(failure_threshold=5, pause_seconds=30.0)
-        semaphore = asyncio.Semaphore(config.concurrency)
-        total = len(samples)
-
-        async def _process_one(i: int, sample: dict) -> dict:
-            sample_id = sample["sample_id"]
-            sample_dir = evidence_dir / sample_id
-
-            # Resumability: skip completed samples
-            existing_notes = read_notes(sample_dir)
-            if existing_notes and existing_notes.get("status") == "success":
-                run_logger.log(
-                    "sample_skip", sample_id=sample_id, detail="already completed"
-                )
-                return {col: "" for col in RESULT_COLUMNS} | {
-                    "sample_id": sample_id,
-                    "repo_url": sample["repo_url"],
-                    "status": "success",
-                }
-
-            # Circuit breaker check
-            if circuit_breaker.is_open():
-                run_logger.log(
-                    "circuit_breaker_open",
-                    level="WARNING",
-                    sample_id=sample_id,
-                )
-                await asyncio.sleep(30.0)
-
-            async with semaphore:
-                await throttle.acquire()
-                logger.info("Processing sample %d/%d: %s", i + 1, total, sample_id)
-                run_logger.log("sample_start", sample_id=sample_id)
-
-                try:
-                    result = await retry_async(
-                        lambda s=sample: self.process_sample(s),
-                        max_attempts=config.throttle.retry_attempts,
-                        backoff_base=config.throttle.backoff_base_seconds,
-                        retryable_exceptions=(TimeoutError, ConnectionError),
-                    )
-                    if result["status"] in ("success", "partial"):
-                        circuit_breaker.record_success()
-                    else:
-                        circuit_breaker.record_failure()
-                    run_logger.log(
-                        "sample_end",
-                        sample_id=sample_id,
-                        status=result["status"],
-                    )
-                    return result
-                except Exception as exc:
-                    circuit_breaker.record_failure()
-                    logger.error(
-                        "Sample %s failed after retries: %s",
-                        sample_id,
-                        exc,
-                        exc_info=True,
-                    )
-                    run_logger.log(
-                        "sample_end",
-                        sample_id=sample_id,
-                        status="failed",
-                        level="ERROR",
-                        error=str(exc),
-                    )
-                    return {col: "" for col in RESULT_COLUMNS} | {
-                        "sample_id": sample_id,
-                        "repo_url": sample["repo_url"],
-                        "status": "failed",
-                        "error": str(exc),
-                    }
-
-        try:
-            results = await asyncio.gather(
-                *(_process_one(i, s) for i, s in enumerate(samples))
-            )
-        finally:
-            await browser_adapter.close()
-
-        write_results_csv(out_dir / "results.csv", list(results))
-        write_manifest(
-            RunManifest(
-                run_id=run_id,
-                playbook=self.playbook_name,
-                input_file=str(self.input_path),
-                output_dir=str(out_dir),
-                config=config.model_dump(),
-                started_at=started_at,
-                finished_at=now_iso(),
-            ),
-            out_dir,
-        )
-        run_logger.log("run_end", detail="complete")
-
-    def run(self) -> None:
-        asyncio.run(self._run_async())

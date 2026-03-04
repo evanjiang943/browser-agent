@@ -40,7 +40,7 @@ class RunLogger:
         total = sum(counts.values())
         return {
             "total": total,
-            "succeeded": counts.get("succeeded", 0),
+            "succeeded": counts.get("success", 0),
             "failed": counts.get("failed", 0),
             "partial": counts.get("partial", 0),
             "retried": counts.get("retried", 0),

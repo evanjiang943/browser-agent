@@ -15,20 +15,27 @@ class ConcreteRunner(PlaybookRunner):
     def playbook_name(self) -> str:
         return "test-playbook"
 
+    @property
+    def result_columns(self) -> list[str]:
+        return ["sample_id", "status", "error"]
+
     def load_samples(self) -> list[dict]:
         return []
 
-    def process_sample(self, sample: dict) -> dict:
+    async def process_sample(self, sample: dict) -> dict:
         return {}
+
+    def create_adapters(self, config, browser_adapter) -> None:
+        pass
 
 
 class TestPlaybookNameAbstract:
-    def test_cannot_instantiate_without_playbook_name(self):
+    def test_cannot_instantiate_without_abstract_methods(self):
         class Incomplete(PlaybookRunner):
             def load_samples(self):
                 return []
 
-            def process_sample(self, sample):
+            async def process_sample(self, sample):
                 return {}
 
         with pytest.raises(TypeError):

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import importlib
 import json
 import uuid
 from pathlib import Path
@@ -43,7 +44,6 @@ PLAYBOOK_RUNNERS: dict[str, str] = {
 def _import_runner(import_path: str):
     """Import a runner class from a 'module:Class' string."""
     module_path, class_name = import_path.rsplit(":", 1)
-    import importlib
     module = importlib.import_module(module_path)
     return getattr(module, class_name)
 
@@ -57,7 +57,6 @@ def run(
     max_per_minute: int = typer.Option(20, "--max-per-minute", help="Max pages per minute"),
     max_workers: int = typer.Option(1, "--max-workers", help="Concurrent browser sessions"),
     headless: bool = typer.Option(True, "--headless/--headful", help="Run browser headless or headful"),
-    do_resume: bool = typer.Option(False, "--resume", help="Skip already-completed samples"),
 ) -> None:
     """Run an evidence collection playbook."""
     if playbook not in VALID_PLAYBOOKS:

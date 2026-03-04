@@ -67,15 +67,6 @@ def mock_page() -> AsyncMock:
     return page
 
 
-@pytest.fixture
-def mock_browser(mock_page: AsyncMock) -> AsyncMock:
-    browser = AsyncMock()
-    browser.open = AsyncMock(return_value=mock_page)
-    browser.screenshot = AsyncMock()
-    browser.close = AsyncMock()
-    return browser
-
-
 def _make_runner(
     input_path: Path, tmp_path: Path, config: RunConfig | None = None
 ) -> TicketsRunner:

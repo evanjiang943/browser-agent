@@ -6,7 +6,7 @@ import asyncio
 import csv
 import json
 from pathlib import Path
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, patch
 
 import pytest
 
@@ -35,27 +35,6 @@ def two_sample_csv(tmp_path: Path) -> Path:
         "https://github.com/org/repo/pull/99\n"
     )
     return csv_path
-
-
-@pytest.fixture
-def mock_page() -> AsyncMock:
-    page = AsyncMock()
-    page.query_selector.return_value = None
-    page.query_selector_all.return_value = []
-    page.close = AsyncMock()
-    page.inner_text = AsyncMock(return_value="")
-    page.evaluate = AsyncMock(return_value=0)
-    page.wait_for_timeout = AsyncMock()
-    return page
-
-
-@pytest.fixture
-def mock_browser(mock_page: AsyncMock) -> AsyncMock:
-    browser = AsyncMock()
-    browser.open = AsyncMock(return_value=mock_page)
-    browser.screenshot = AsyncMock()
-    browser.close = AsyncMock()
-    return browser
 
 
 @pytest.fixture
@@ -362,7 +341,7 @@ class TestRunAsync:
 
         # Patch BrowserAdapter and GitHubAdapter to avoid real browser
         with patch(
-            "evidence_collector.runners.github_checks.BrowserAdapter"
+            "evidence_collector.runners.base.BrowserAdapter"
         ) as MockBA, patch(
             "evidence_collector.runners.github_checks.GitHubAdapter"
         ) as MockGA:
@@ -391,7 +370,7 @@ class TestRunAsync:
         out_dir = tmp_path / "output"
 
         with patch(
-            "evidence_collector.runners.github_checks.BrowserAdapter"
+            "evidence_collector.runners.base.BrowserAdapter"
         ) as MockBA, patch(
             "evidence_collector.runners.github_checks.GitHubAdapter"
         ) as MockGA:
@@ -423,7 +402,7 @@ class TestRunAsync:
         out_dir = tmp_path / "output"
 
         with patch(
-            "evidence_collector.runners.github_checks.BrowserAdapter"
+            "evidence_collector.runners.base.BrowserAdapter"
         ) as MockBA, patch(
             "evidence_collector.runners.github_checks.GitHubAdapter"
         ) as MockGA:
@@ -448,7 +427,7 @@ class TestRunAsync:
         out_dir = tmp_path / "output"
 
         with patch(
-            "evidence_collector.runners.github_checks.BrowserAdapter"
+            "evidence_collector.runners.base.BrowserAdapter"
         ), patch(
             "evidence_collector.runners.github_checks.GitHubAdapter"
         ):

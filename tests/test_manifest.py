@@ -60,8 +60,8 @@ def test_log_writes_jsonl(tmp_path):
 def test_summary_counts(tmp_path):
     """summary() should count sample_end events by status."""
     logger = RunLogger(tmp_path)
-    logger.log("sample_end", sample_id="s1", status="succeeded")
-    logger.log("sample_end", sample_id="s2", status="succeeded")
+    logger.log("sample_end", sample_id="s1", status="success")
+    logger.log("sample_end", sample_id="s2", status="success")
     logger.log("sample_end", sample_id="s3", status="failed")
     logger.log("sample_end", sample_id="s4", status="partial")
     logger.log("step_start", sample_id="s5")  # not sample_end, should be ignored

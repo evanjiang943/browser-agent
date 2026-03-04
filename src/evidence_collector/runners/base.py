@@ -10,12 +10,15 @@ from pathlib import Path
 from typing import Any, Awaitable, Callable
 
 from evidence_collector.adapters.browser import BrowserAdapter
+from evidence_collector.config import RunConfig
 from evidence_collector.evidence.logging import RunLogger
-from evidence_collector.evidence.manifest import SampleNotes, SubItemNotes
+from evidence_collector.evidence.manifest import RunManifest, SampleNotes, SubItemNotes, write_manifest
 from evidence_collector.evidence.naming import generate_sample_id, screenshot_filename
-from evidence_collector.io.paths import read_notes, setup_sample_dir, write_notes
+from evidence_collector.io.csv_utils import write_results_csv
+from evidence_collector.io.paths import read_notes, setup_run_dir, setup_sample_dir, write_notes
 from evidence_collector.utils.retry import retry_async
 from evidence_collector.utils.throttling import CircuitBreaker, Throttle
+from evidence_collector.utils.time import now_filename_stamp, now_iso
 
 logger = logging.getLogger(__name__)
 
@@ -432,11 +435,19 @@ class BaseRunner:
 
 
 class PlaybookRunner(abc.ABC):
-    """Abstract base class for playbook runners (legacy interface).
+    """Abstract base class for playbook runners.
 
-    Subclass this for runners that implement their own ``process_sample`` logic.
-    For new playbooks, prefer composing a :class:`BaseRunner` with
-    :class:`StepDefinition` callables.
+    Provides shared ``_run_async()`` orchestration: config init, run dir
+    creation, adapter setup, throttle/semaphore/circuit-breaker, the
+    ``_process_one`` loop (calling ``self.process_sample``), results CSV
+    + manifest writing, and browser cleanup.
+
+    Subclasses must implement:
+    - ``playbook_name`` — slug for directory paths
+    - ``result_columns`` — list of CSV column names
+    - ``load_samples()`` — parse input CSV/XLSX
+    - ``process_sample(sample)`` — process one sample
+    - ``create_adapters(config, browser_adapter)`` — set up adapters on self
     """
 
     def __init__(self, input_path: Path, output_dir: Path, config: Any) -> None:
@@ -450,19 +461,161 @@ class PlaybookRunner(abc.ABC):
         """Return the playbook slug used in directory paths."""
         ...
 
+    @property
+    @abc.abstractmethod
+    def result_columns(self) -> list[str]:
+        """Return the list of CSV result column names."""
+        ...
+
     @abc.abstractmethod
     def load_samples(self) -> list[dict]:
         """Load and validate input samples from CSV/XLSX."""
         ...
 
     @abc.abstractmethod
-    def process_sample(self, sample: dict) -> dict:
+    async def process_sample(self, sample: dict) -> dict:
         """Process a single sample: navigate, screenshot, extract, write evidence."""
         ...
 
+    @abc.abstractmethod
+    def create_adapters(self, config: RunConfig, browser_adapter: BrowserAdapter) -> None:
+        """Create playbook-specific adapters and set them on self."""
+        ...
+
+    async def _run_async(self) -> None:
+        """Shared orchestration for all PlaybookRunner subclasses."""
+        config = self.config if isinstance(self.config, RunConfig) else RunConfig()
+        started_at = now_iso()
+        run_id = f"{self.playbook_name}-{now_filename_stamp()}"
+
+        out_dir = setup_run_dir(self.output_dir, self.playbook_name, run_id)
+        run_logger = RunLogger(out_dir)
+        evidence_dir = out_dir / "evidence" / self.playbook_name
+
+        browser_adapter = BrowserAdapter(
+            profile_dir=Path(config.browser.profile_dir) if config.browser.profile_dir else None,
+            headless=config.browser.headless,
+            timeout=config.browser.timeout_ms,
+        )
+
+        samples = self.load_samples()
+        if not samples:
+            write_results_csv(out_dir / "results.csv", [])
+            run_logger.log("run_end", detail="no samples")
+            return
+
+        # Set common instance attrs for process_sample
+        self._browser_adapter = browser_adapter
+        self._evidence_dir = evidence_dir
+        self._screenshot_mode = config.screenshot.mode
+
+        # Let subclass create additional adapters
+        self.create_adapters(config, browser_adapter)
+
+        result_cols = self.result_columns
+        throttle = Throttle(max_per_minute=config.throttle.max_pages_per_minute)
+        circuit_breaker = CircuitBreaker(failure_threshold=5, pause_seconds=30.0)
+        semaphore = asyncio.Semaphore(config.concurrency)
+        total = len(samples)
+
+        async def _process_one(i: int, sample: dict) -> dict:
+            sample_id = sample["sample_id"]
+            sample_dir = evidence_dir / sample_id
+
+            # Resumability: skip completed samples
+            existing_notes = read_notes(sample_dir)
+            if existing_notes and existing_notes.get("status") == "success":
+                run_logger.log(
+                    "sample_skip", sample_id=sample_id, detail="already completed"
+                )
+                result = {col: "" for col in result_cols}
+                result["sample_id"] = sample_id
+                result["status"] = "success"
+                for col in result_cols:
+                    if col in sample:
+                        result[col] = sample[col]
+                return result
+
+            # Circuit breaker check
+            if circuit_breaker.is_open():
+                run_logger.log(
+                    "circuit_breaker_open",
+                    level="WARNING",
+                    sample_id=sample_id,
+                )
+                await asyncio.sleep(30.0)
+
+            async with semaphore:
+                await throttle.acquire()
+                logger.info("Processing sample %d/%d: %s", i + 1, total, sample_id)
+                run_logger.log("sample_start", sample_id=sample_id)
+
+                try:
+                    result = await retry_async(
+                        lambda s=sample: self.process_sample(s),
+                        max_attempts=config.throttle.retry_attempts,
+                        backoff_base=config.throttle.backoff_base_seconds,
+                        retryable_exceptions=(TimeoutError, ConnectionError),
+                    )
+                    if result["status"] in ("success", "partial"):
+                        circuit_breaker.record_success()
+                    else:
+                        circuit_breaker.record_failure()
+                    run_logger.log(
+                        "sample_end",
+                        sample_id=sample_id,
+                        status=result["status"],
+                    )
+                    return result
+                except Exception as exc:
+                    circuit_breaker.record_failure()
+                    logger.error(
+                        "Sample %s failed after retries: %s",
+                        sample_id,
+                        exc,
+                        exc_info=True,
+                    )
+                    run_logger.log(
+                        "sample_end",
+                        sample_id=sample_id,
+                        status="failed",
+                        level="ERROR",
+                        error=str(exc),
+                    )
+                    result = {col: "" for col in result_cols}
+                    result["sample_id"] = sample_id
+                    result["status"] = "failed"
+                    result["error"] = str(exc)
+                    for col in result_cols:
+                        if col in sample:
+                            result[col] = sample[col]
+                    return result
+
+        try:
+            results = await asyncio.gather(
+                *(_process_one(i, s) for i, s in enumerate(samples))
+            )
+        finally:
+            await browser_adapter.close()
+
+        write_results_csv(out_dir / "results.csv", list(results))
+        write_manifest(
+            RunManifest(
+                run_id=run_id,
+                playbook=self.playbook_name,
+                input_file=str(self.input_path),
+                output_dir=str(out_dir),
+                config=config.model_dump(),
+                started_at=started_at,
+                finished_at=now_iso(),
+            ),
+            out_dir,
+        )
+        run_logger.log("run_end", detail="complete")
+
     def run(self) -> None:
         """Run the full playbook across all samples."""
-        raise NotImplementedError
+        asyncio.run(self._run_async())
 
     def should_skip(self, sample: dict) -> bool:
         """Check if sample is already completed (for resumability)."""
