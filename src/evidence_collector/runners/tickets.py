@@ -11,6 +11,10 @@ from .base import BaseRunner
 class TicketsRunner(BaseRunner):
     """Playbook A: open ticket URLs, screenshot, extract fields."""
 
+    @property
+    def playbook_name(self) -> str:
+        return "tickets"
+
     def load_samples(self) -> list[dict]:
         # TODO: read CSV/XLSX, validate 'url' column exists
         raise NotImplementedError

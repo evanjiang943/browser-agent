@@ -11,6 +11,10 @@ from .base import BaseRunner
 class GitHubChecksRunner(BaseRunner):
     """Playbook B: PR/commit evidence with checks, CI, and Jira traversal."""
 
+    @property
+    def playbook_name(self) -> str:
+        return "github-checks"
+
     def load_samples(self) -> list[dict]:
         # TODO: read CSV/XLSX, validate pr_url or commit_url column
         raise NotImplementedError

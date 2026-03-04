@@ -11,6 +11,10 @@ from .base import BaseRunner
 class CodeRecencyRunner(BaseRunner):
     """Playbook D: git blame analysis for code snippet recency and materiality."""
 
+    @property
+    def playbook_name(self) -> str:
+        return "code-recency"
+
     def load_samples(self) -> list[dict]:
         # TODO: read CSV/XLSX, validate repo_url + code_string + time_window_days
         raise NotImplementedError

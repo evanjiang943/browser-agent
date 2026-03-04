@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 
 def now_iso() -> str:
@@ -16,6 +16,12 @@ def now_filename_stamp() -> str:
 
 
 def is_within_window(date_str: str, window_days: int) -> bool:
-    """Check if a date string falls within the last N days."""
-    # TODO: parse date_str, compare to now, return bool
-    raise NotImplementedError
+    """Check if a date string falls within the last N days.
+
+    Naive datetimes are treated as UTC.
+    """
+    dt = datetime.fromisoformat(date_str)
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=timezone.utc)
+    cutoff = datetime.now(timezone.utc) - timedelta(days=window_days)
+    return dt >= cutoff

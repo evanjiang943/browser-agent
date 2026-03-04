@@ -1,5 +1,10 @@
 """Configuration schema and loading."""
 
+from __future__ import annotations
+
+import json
+from pathlib import Path
+
 from pydantic import BaseModel
 
 
@@ -36,6 +41,32 @@ class RunConfig(BaseModel):
 
 
 def load_config(path: str | None = None) -> RunConfig:
-    """Load configuration from YAML file, falling back to defaults."""
-    # TODO: load from YAML file if path provided, merge with defaults
-    raise NotImplementedError
+    """Load configuration from a file, falling back to defaults.
+
+    - ``path=None`` → return ``RunConfig()`` (all defaults).
+    - ``.json`` file → parse JSON and validate.
+    - Other extensions → attempt YAML via PyYAML (optional dependency).
+    - Missing file → ``FileNotFoundError``.
+    """
+    if path is None:
+        return RunConfig()
+
+    p = Path(path)
+    if not p.exists():
+        raise FileNotFoundError(f"Config file not found: {path}")
+
+    text = p.read_text()
+
+    if p.suffix == ".json":
+        data = json.loads(text)
+    else:
+        try:
+            import yaml
+        except ImportError as exc:
+            raise ImportError(
+                "PyYAML is required to load YAML config files. "
+                "Install it with: pip install pyyaml"
+            ) from exc
+        data = yaml.safe_load(text)
+
+    return RunConfig.model_validate(data)

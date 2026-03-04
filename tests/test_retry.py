@@ -99,3 +99,40 @@ def test_retry_sync_non_retryable_propagates():
     with pytest.raises(TypeError, match="wrong type"):
         retry_sync(fn, max_attempts=3, retryable_exceptions=(ValueError,))
     assert fn.call_count == 1
+
+
+# ---------------------------------------------------------------------------
+# Edge cases
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_retry_async_max_attempts_one():
+    """max_attempts=1: raises immediately, no sleep."""
+    fn = AsyncMock(side_effect=ValueError("fail"))
+    with patch("evidence_collector.utils.retry.asyncio.sleep", new_callable=AsyncMock) as mock_sleep:
+        with pytest.raises(ValueError, match="fail"):
+            await retry_async(fn, max_attempts=1)
+    assert fn.await_count == 1
+    mock_sleep.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_retry_async_multiple_retryable_types():
+    """Both ValueError and TypeError are retried when listed."""
+    fn = AsyncMock(side_effect=[ValueError("v"), TypeError("t"), "ok"])
+    with patch("evidence_collector.utils.retry.asyncio.sleep", new_callable=AsyncMock):
+        result = await retry_async(
+            fn, max_attempts=3, retryable_exceptions=(ValueError, TypeError)
+        )
+    assert result == "ok"
+    assert fn.await_count == 3
+
+
+@pytest.mark.asyncio
+async def test_retry_async_returns_none():
+    """fn returning None is treated as success."""
+    fn = AsyncMock(return_value=None)
+    result = await retry_async(fn, max_attempts=3)
+    assert result is None
+    assert fn.await_count == 1

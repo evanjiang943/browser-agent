@@ -29,3 +29,5 @@ packages = ["src/evidence_collector"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+addopts = "--ignore=tests/manual"
+asyncio_mode = "strict"

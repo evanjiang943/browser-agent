@@ -11,6 +11,10 @@ from .base import BaseRunner
 class ERPAnalogueRunner(BaseRunner):
     """Playbook E: fill form, screenshot, download report and attachments."""
 
+    @property
+    def playbook_name(self) -> str:
+        return "erp-analogue"
+
     def load_samples(self) -> list[dict]:
         # TODO: read CSV/XLSX with form field values
         raise NotImplementedError

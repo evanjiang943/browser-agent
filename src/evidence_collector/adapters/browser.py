@@ -10,11 +10,14 @@ Usage in a playbook runner::
 
 from __future__ import annotations
 
+import logging
 import re
 from pathlib import Path
 from urllib.parse import urlparse
 
 from playwright.async_api import Page, async_playwright
+
+logger = logging.getLogger(__name__)
 
 
 class LoginRedirectError(Exception):
@@ -33,10 +36,12 @@ class BrowserAdapter:
         profile_dir: Path | None = None,
         headless: bool = False,
         timeout: int = 30_000,
+        error_screenshot_dir: Path | None = None,
     ) -> None:
         self.profile_dir = profile_dir
         self.headless = headless
         self.timeout = timeout
+        self.error_screenshot_dir = error_screenshot_dir
         self._playwright = None
         self._browser = None
         self._context = None
@@ -58,6 +63,18 @@ class BrowserAdapter:
             )
             self._context = await self._browser.new_context()
 
+    async def _capture_error_screenshot(self, page: Page, label: str) -> None:
+        """Best-effort screenshot on error, saved to error_screenshot_dir."""
+        if self.error_screenshot_dir is None:
+            return
+        try:
+            self.error_screenshot_dir.mkdir(parents=True, exist_ok=True)
+            dest = self.error_screenshot_dir / f"{label}.png"
+            await page.screenshot(path=str(dest))
+            logger.info("Error screenshot saved: %s", dest)
+        except Exception:
+            logger.warning("Failed to capture error screenshot", exc_info=True)
+
     async def open(self, url: str) -> Page:
         """Navigate to *url* and return the Playwright Page.
 
@@ -74,6 +91,7 @@ class BrowserAdapter:
         if actual.netloc != requested.netloc or re.search(
             r"login|signin", actual.path, re.IGNORECASE
         ):
+            await self._capture_error_screenshot(page, "login_redirect")
             raise LoginRedirectError(
                 f"Redirected to login page: {page.url} (requested {url})"
             )
@@ -81,6 +99,7 @@ class BrowserAdapter:
         # 404 detection
         title = await page.title()
         if re.search(r"404|not\s*found", title, re.IGNORECASE):
+            await self._capture_error_screenshot(page, "page_not_found")
             raise PageNotFoundError(f"Page not found: {url} (title: {title!r})")
 
         return page
@@ -99,7 +118,12 @@ class BrowserAdapter:
             await page.screenshot(path=str(path))
         elif mode == "tiled":
             scroll_height = await page.evaluate("document.body.scrollHeight")
-            viewport_height = page.viewport_size["height"]
+            vp = page.viewport_size
+            if vp is None:
+                raise RuntimeError(
+                    "Cannot take tiled screenshot: viewport size is not set"
+                )
+            viewport_height = vp["height"]
             tiles = max(1, -(-scroll_height // viewport_height))  # ceil division
             for i in range(tiles):
                 await page.evaluate(f"window.scrollTo(0, {i * viewport_height})")

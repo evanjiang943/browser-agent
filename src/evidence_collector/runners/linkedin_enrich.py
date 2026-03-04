@@ -11,6 +11,10 @@ from .base import BaseRunner
 class LinkedInEnrichRunner(BaseRunner):
     """Playbook C: enrich CSV with LinkedIn profile data."""
 
+    @property
+    def playbook_name(self) -> str:
+        return "linkedin-enrich"
+
     def load_samples(self) -> list[dict]:
         # TODO: read CSV/XLSX, validate 'name' column exists
         raise NotImplementedError
