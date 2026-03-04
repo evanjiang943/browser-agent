@@ -1,4 +1,2 @@
-pr_url,commit_url
-https://github.com/example-org/example-repo/pull/1,https://github.com/example-org/example-repo/commit/abc1234
-https://github.com/example-org/example-repo/pull/2,https://github.com/example-org/example-repo/commit/def5678
-https://github.com/example-org/example-repo/pull/3,https://github.com/example-org/example-repo/commit/ghi9012
+pr_url
+file:///Users/evanjiang/1 Personal/Projects/browser-agent/examples/mock_pr.html

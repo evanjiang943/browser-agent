@@ -32,6 +32,19 @@ PLAYBOOK_COLUMNS: dict[str, list[str]] = {
     "erp-analogue": [],
 }
 
+# Playbooks with implemented runners. Values are import paths.
+PLAYBOOK_RUNNERS: dict[str, str] = {
+    "github-checks": "evidence_collector.runners.github_checks:GitHubChecksRunner",
+}
+
+
+def _import_runner(import_path: str):
+    """Import a runner class from a 'module:Class' string."""
+    module_path, class_name = import_path.rsplit(":", 1)
+    import importlib
+    module = importlib.import_module(module_path)
+    return getattr(module, class_name)
+
 
 @app.command()
 def run(
@@ -40,7 +53,9 @@ def run(
     out: str = typer.Option("out", "--out", "-o", help="Output directory"),
     profile: str = typer.Option(None, "--profile", help="Browser profile to use"),
     max_per_minute: int = typer.Option(20, "--max-per-minute", help="Max pages per minute"),
-    concurrency: int = typer.Option(1, "--concurrency", help="Concurrent browser sessions"),
+    max_workers: int = typer.Option(1, "--max-workers", help="Concurrent browser sessions"),
+    headless: bool = typer.Option(True, "--headless/--headful", help="Run browser headless or headful"),
+    do_resume: bool = typer.Option(False, "--resume", help="Skip already-completed samples"),
 ) -> None:
     """Run an evidence collection playbook."""
     if playbook not in VALID_PLAYBOOKS:
@@ -52,32 +67,40 @@ def run(
         typer.echo(f"Input file not found: {input_path}")
         raise typer.Exit(1)
 
-    run_id = uuid.uuid4().hex[:12]
-
     config = RunConfig(
-        browser=BrowserConfig(profile_dir=profile),
+        browser=BrowserConfig(profile_dir=profile, headless=headless),
         throttle=ThrottleConfig(max_pages_per_minute=max_per_minute),
-        concurrency=concurrency,
+        concurrency=max_workers,
     )
 
-    out_path = setup_run_dir(out, playbook, run_id)
+    if playbook in PLAYBOOK_RUNNERS:
+        # Dispatch to implemented runner — it handles setup_run_dir,
+        # write_manifest, and write_results_csv internally.
+        runner_cls = _import_runner(PLAYBOOK_RUNNERS[playbook])
+        runner_instance = runner_cls(input_path, Path(out), config)
+        typer.echo(f"playbook {playbook} starting")
+        runner_instance.run()
+        typer.echo(f"playbook {playbook} finished")
+    else:
+        # Stub path for unimplemented playbooks
+        run_id = uuid.uuid4().hex[:12]
+        out_path = setup_run_dir(out, playbook, run_id)
+        manifest = RunManifest(
+            run_id=run_id,
+            playbook=playbook,
+            input_file=str(input_path),
+            output_dir=str(out_path),
+            config=config.model_dump(),
+            started_at=now_iso(),
+            finished_at=None,
+        )
+        write_manifest(manifest, out_path)
 
-    manifest = RunManifest(
-        run_id=run_id,
-        playbook=playbook,
-        input_file=str(input_path),
-        output_dir=str(out_path),
-        config=config.model_dump(),
-        started_at=now_iso(),
-        finished_at=None,
-    )
-    write_manifest(manifest, out_path)
+        typer.echo(f"playbook {playbook} starting, run_id={run_id}")
+        typer.echo("TODO: call playbook runner")
 
-    typer.echo(f"playbook {playbook} starting, run_id={run_id}")
-    typer.echo("TODO: call playbook runner")
-
-    manifest.finished_at = now_iso()
-    write_manifest(manifest, out_path)
+        manifest.finished_at = now_iso()
+        write_manifest(manifest, out_path)
 
 
 @app.command()
