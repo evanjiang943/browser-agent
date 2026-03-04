@@ -7,8 +7,7 @@ from datetime import datetime, timezone
 
 def now_iso() -> str:
     """Return current UTC time as ISO 8601 string."""
-    # TODO: return datetime.utcnow().isoformat()
-    raise NotImplementedError
+    return datetime.now(timezone.utc).isoformat()
 
 
 def now_filename_stamp() -> str:
