@@ -2,44 +2,32 @@
 
 from __future__ import annotations
 
+import os
+import tempfile
 from pathlib import Path
-from typing import Any
+
+from pydantic import BaseModel
 
 
-def create_manifest(
-    output_dir: Path,
-    playbook: str,
-    input_path: Path,
-    config: dict,
-    total_samples: int,
-) -> dict:
-    """Create and write the initial run_manifest.json."""
-    # TODO: build manifest dict with inputs, config, versions, start timestamp,
-    #       write to output_dir/run_manifest.json
-    raise NotImplementedError
+class RunManifest(BaseModel):
+    run_id: str
+    playbook: str
+    input_file: str
+    output_dir: str
+    config: dict
+    started_at: str
+    finished_at: str | None = None
+    versions: dict = {}
 
 
-def update_manifest(output_dir: Path, updates: dict) -> None:
-    """Update an existing run manifest with completion info."""
-    # TODO: read existing manifest, merge updates (end time, summary stats),
-    #       write back atomically
-    raise NotImplementedError
-
-
-def write_sample_notes(
-    sample_dir: Path,
-    sample_id: str,
-    status: str,
-    steps_completed: list[str],
-    errors: list[str] | None = None,
-    artifacts: dict | None = None,
-) -> None:
-    """Write per-sample notes.json with status and step tracking."""
-    # TODO: build notes dict, write to sample_dir/notes.json
-    raise NotImplementedError
-
-
-def read_sample_notes(sample_dir: Path) -> dict | None:
-    """Read existing notes.json for a sample, if it exists."""
-    # TODO: read and parse notes.json, return None if not found
-    raise NotImplementedError
+def write_manifest(manifest: RunManifest, out_dir: Path) -> None:
+    """Serialize manifest to JSON and write atomically to out_dir/run_manifest.json."""
+    dest = out_dir / "run_manifest.json"
+    fd, tmp_path = tempfile.mkstemp(dir=out_dir, suffix=".tmp")
+    try:
+        with os.fdopen(fd, "w") as f:
+            f.write(manifest.model_dump_json(indent=2))
+        os.replace(tmp_path, dest)
+    except BaseException:
+        os.unlink(tmp_path)
+        raise

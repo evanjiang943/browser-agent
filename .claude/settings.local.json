@@ -3,7 +3,11 @@
     "allow": [
       "Bash(gh auth:*)",
       "Bash(brew list:*)",
-      "Bash(brew install:*)"
+      "Bash(brew install:*)",
+      "Bash(gh repo:*)",
+      "Bash(python:*)",
+      "Bash(pip install:*)",
+      "Bash(PYTHONPATH=src python:*)"
     ]
   }
 }
