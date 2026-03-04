@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import re
+from urllib.parse import quote, urlparse
 
 from playwright.async_api import Page
 
@@ -15,25 +16,183 @@ class GitHubAdapter:
     def __init__(self, browser_adapter) -> None:
         self.browser = browser_adapter
 
-    async def open_pr(self, url: str) -> None:
+    async def open_pr(self, url: str) -> Page:
         """Open a pull request page."""
-        raise NotImplementedError
+        return await self.browser.open(url)
 
-    async def open_commit(self, url: str) -> None:
+    async def open_commit(self, url: str) -> Page:
         """Open a commit page."""
-        raise NotImplementedError
+        return await self.browser.open(url)
 
     async def open_checks(self) -> None:
         """Navigate to the checks/status tab of the current PR."""
         raise NotImplementedError
 
-    async def open_blame_view(self, file_url: str) -> None:
-        """Switch a file view to blame mode."""
-        raise NotImplementedError
+    async def open_blame_view(self, file_url: str) -> Page:
+        """Switch a file view to blame mode by replacing /blob/ with /blame/."""
+        blame_url = file_url.replace("/blob/", "/blame/", 1)
+        return await self.browser.open(blame_url)
 
-    async def extract_blame_dates(self, line_range: tuple[int, int]) -> list[dict]:
-        """Extract commit dates for specific lines from blame view."""
-        raise NotImplementedError
+    async def extract_blame_dates(
+        self, page: Page, line_range: tuple[int, int]
+    ) -> list[dict]:
+        """Extract commit dates and SHAs from blame annotations for a line range.
+
+        Returns list of dicts with keys: line, date, sha.
+        """
+        start, end = line_range
+        results: list[dict] = []
+
+        for line_num in range(start, end + 1):
+            # Try data-attribute selectors first (structured blame view)
+            row = await page.query_selector(
+                f"[data-blame-line='{line_num}']"
+            )
+            if row:
+                date = await row.get_attribute("data-blame-date") or ""
+                sha = await row.get_attribute("data-blame-sha") or ""
+                if date or sha:
+                    results.append({"line": line_num, "date": date, "sha": sha})
+                    continue
+
+            # Fallback: look for blame-commit-date and blame-commit-sha in line containers
+            row = await page.query_selector(f"#LC{line_num}")
+            if not row:
+                row = await page.query_selector(f"[data-line-number='{line_num}']")
+            if row:
+                parent = await row.evaluate_handle("el => el.closest('.blame-hunk, .blame-line, tr')")
+                if parent:
+                    date_el = await parent.as_element().query_selector(
+                        "[data-blame-date], time, .blame-commit-date"
+                    )
+                    sha_el = await parent.as_element().query_selector(
+                        "[data-blame-sha], a.blame-commit-link, .blame-sha"
+                    )
+                    date = ""
+                    sha = ""
+                    if date_el:
+                        date = (
+                            await date_el.get_attribute("datetime")
+                            or await date_el.get_attribute("data-blame-date")
+                            or (await date_el.inner_text()).strip()
+                        )
+                    if sha_el:
+                        sha = (
+                            await sha_el.get_attribute("data-blame-sha")
+                            or await sha_el.get_attribute("href")
+                            or (await sha_el.inner_text()).strip()
+                        )
+                        # Extract bare SHA from href like /org/repo/commit/abc123
+                        if "/" in sha:
+                            sha = sha.rstrip("/").rsplit("/", 1)[-1]
+                    if date or sha:
+                        results.append({"line": line_num, "date": date, "sha": sha})
+
+        return results
+
+    async def search_code(
+        self, repo_url: str, query: str
+    ) -> tuple[str, tuple[int, int]] | None:
+        """Search for code in a GitHub repo and return the first result.
+
+        Returns (file_url, (start_line, end_line)) or None if no results.
+        """
+        # Extract owner/repo from URL
+        parsed = urlparse(repo_url.rstrip("/"))
+        path_parts = parsed.path.strip("/").split("/")
+        if len(path_parts) < 2:
+            return None
+        owner_repo = f"{path_parts[0]}/{path_parts[1]}"
+
+        search_url = (
+            f"https://github.com/search?q={quote(query)}"
+            f"+repo:{quote(owner_repo)}&type=code"
+        )
+        page = await self.browser.open(search_url)
+
+        try:
+            # Look for the first code result link
+            result_link = await page.query_selector(
+                "[data-testid='result'] a, .code-list-item a, .search-result a"
+            )
+            if not result_link:
+                return None
+
+            file_url = await result_link.get_attribute("href") or ""
+            if not file_url:
+                return None
+
+            # Make absolute if relative
+            if file_url.startswith("/"):
+                file_url = f"https://github.com{file_url}"
+
+            # Extract line range from URL fragment (#L10-L20 or #L10)
+            line_range = (1, 1)
+            m = re.search(r"#L(\d+)(?:-L(\d+))?", file_url)
+            if m:
+                start = int(m.group(1))
+                end = int(m.group(2)) if m.group(2) else start
+                line_range = (start, end)
+
+            return file_url, line_range
+        finally:
+            await page.close()
+
+    async def extract_commit_diff_summary(self, page: Page) -> dict:
+        """Extract diff summary from a commit page.
+
+        Returns dict with: files_changed, lines_added, lines_removed, diff_text_snippet.
+        """
+        files_changed = 0
+        lines_added = 0
+        lines_removed = 0
+        diff_text_snippet = ""
+
+        # Try structured diff stats
+        stat_el = await page.query_selector(
+            "[data-section='diffstat'], .diffstat, #diffstat"
+        )
+        if stat_el:
+            stat_text = await stat_el.inner_text()
+            m = re.search(r"(\d+)\s+files?\s+changed", stat_text)
+            if m:
+                files_changed = int(m.group(1))
+            m = re.search(r"(\d+)\s+additions?", stat_text)
+            if m:
+                lines_added = int(m.group(1))
+            m = re.search(r"(\d+)\s+deletions?", stat_text)
+            if m:
+                lines_removed = int(m.group(1))
+        else:
+            # Fallback: count file diff headers
+            diff_files = await page.query_selector_all(
+                ".file-header, [data-file-type], .diff-file-header"
+            )
+            files_changed = len(diff_files)
+
+            # Count +/- lines
+            body_text = await page.inner_text("body")
+            for line in body_text.splitlines():
+                stripped = line.strip()
+                if stripped.startswith("+") and not stripped.startswith("+++"):
+                    lines_added += 1
+                elif stripped.startswith("-") and not stripped.startswith("---"):
+                    lines_removed += 1
+
+        # Extract a snippet of the diff for materiality assessment
+        diff_el = await page.query_selector(
+            ".diff-table, .blob-code-inner, [data-section='diff']"
+        )
+        if diff_el:
+            raw = await diff_el.inner_text()
+            diff_text_snippet = raw[:500]
+
+        return {
+            "files_changed": files_changed,
+            "lines_added": lines_added,
+            "lines_removed": lines_removed,
+            "diff_text_snippet": diff_text_snippet,
+        }
 
     # ── Implemented extraction methods ──────────────────────────────
 

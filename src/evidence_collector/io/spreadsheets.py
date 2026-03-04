@@ -75,6 +75,71 @@ def load_github_samples(input_path: Path) -> list[dict]:
     return results
 
 
+_DEFAULT_WINDOW_DAYS = 365
+
+
+def load_code_recency_samples(input_path: Path) -> list[dict]:
+    """Load code recency samples from CSV/XLSX.
+
+    Requires columns: ``repo_url``, ``code_string``.
+    Optional: ``time_window_days`` (int, default 365), ``since_date`` (str).
+    Returns dicts with ``sample_id``, ``repo_url``, ``code_string``,
+    ``time_window_days`` plus original row data.
+    """
+    rows = read_input(input_path)
+    if not rows:
+        return []
+
+    missing = validate_columns(rows, ["repo_url", "code_string"])
+    if missing:
+        raise ValueError(
+            f"Missing required columns: {', '.join(missing)}. "
+            f"Need: repo_url, code_string"
+        )
+
+    results: list[dict] = []
+    for row in rows:
+        repo_url = _nonempty(row.get("repo_url"))
+        code_string = _nonempty(row.get("code_string"))
+        if not repo_url or not code_string:
+            continue
+
+        sample_id = generate_sample_id(url=f"{repo_url}|{code_string}")
+
+        # Parse time window: prefer time_window_days, fall back to since_date
+        raw_window = _nonempty(row.get("time_window_days"))
+        raw_since = _nonempty(row.get("since_date"))
+
+        if raw_window is not None:
+            try:
+                time_window_days = int(float(raw_window))
+            except (ValueError, TypeError):
+                time_window_days = _DEFAULT_WINDOW_DAYS
+        elif raw_since is not None:
+            # Convert since_date to days from now
+            from datetime import datetime, timezone
+            try:
+                since = datetime.fromisoformat(raw_since)
+                if since.tzinfo is None:
+                    since = since.replace(tzinfo=timezone.utc)
+                delta = datetime.now(timezone.utc) - since
+                time_window_days = max(1, delta.days)
+            except (ValueError, TypeError):
+                time_window_days = _DEFAULT_WINDOW_DAYS
+        else:
+            time_window_days = _DEFAULT_WINDOW_DAYS
+
+        results.append({
+            **row,
+            "sample_id": sample_id,
+            "repo_url": repo_url,
+            "code_string": code_string,
+            "time_window_days": time_window_days,
+        })
+
+    return results
+
+
 def _nonempty(value: object) -> str | None:
     """Return stripped string if non-empty, else None."""
     if value is None:
