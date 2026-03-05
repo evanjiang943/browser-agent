@@ -112,21 +112,19 @@ class GitHubChecksRunner(PlaybookRunner):
             notes.steps_completed.append("extract_metadata")
             write_notes(sample_dir, notes.model_dump())
 
-            # Step 4: screenshot_checks
-            checks_section = await page.query_selector("[data-section='checks']")
-            if checks_section:
-                await checks_section.scroll_into_view_if_needed()
+            # Step 4: screenshot_checks — navigate to Checks tab
+            checks_page = await self._github_adapter.open_checks(page)
             fname = screenshot_filename(sample_id, "github", "checks")
             shot_path = screenshots_dir / fname
             await self._browser_adapter.screenshot(
-                page, shot_path, mode=self._screenshot_mode
+                checks_page, shot_path, mode=self._screenshot_mode
             )
             notes.screenshots.append(fname)
             notes.steps_completed.append("screenshot_checks")
             write_notes(sample_dir, notes.model_dump())
 
-            # Step 5: extract_checks
-            checks = await self._github_adapter.extract_checks(page)
+            # Step 5: extract_checks — from the Checks tab page
+            checks = await self._github_adapter.extract_checks(checks_page)
             result["check_summary"] = checks.get("check_summary", "")
             failed_checks = checks.get("failed_checks", [])
             result["failed_checks_notes"] = ";".join(failed_checks)
@@ -138,7 +136,7 @@ class GitHubChecksRunner(PlaybookRunner):
             for ci_check in failed_checks[: self._max_ci_details]:
                 try:
                     details_url = await self._github_adapter.get_ci_details_url(
-                        ci_check, page
+                        ci_check, checks_page
                     )
                     if not details_url:
                         continue

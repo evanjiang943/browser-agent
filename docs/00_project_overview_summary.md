@@ -1,5 +1,7 @@
 # Evidence Collection — Detailed Summary (Auditor + Browser Agent)
 
+> **Implementation status**: Core framework complete. Playbooks A (Tickets), B (GitHub Checks), and D (Code Recency) are fully implemented with 224 tests passing. GitHub Checks validated against real public PRs. Playbooks C (LinkedIn) and E (ERP) are stubs. See `03_architecture.md` for the actual architecture and `04_playbooks.md` for per-playbook details.
+
 ## What this project is
 Auditors often need to collect evidence from many internal systems (e.g., Workday, GitHub, NetSuite, Jira/Linear) using **read-only access**. Evidence collection becomes the bottleneck because it is:
 - **High-volume** (dozens to thousands of “samples”)

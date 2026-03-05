@@ -3,82 +3,121 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Add rate limiting to payment processor #42 - example-org/example-repo</title>
+<title>Add rate limiting to payment processor · Pull Request #42 · example-org/example-repo</title>
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
   body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; color: #1f2328; background: #f6f8fa; line-height: 1.5; }
   a { color: #0969da; text-decoration: none; }
   a:hover { text-decoration: underline; }
 
-  .header { background: #24292f; color: #fff; padding: 12px 24px; font-size: 14px; }
-  .header a { color: #fff; }
-  .header .sep { color: #8b949e; margin: 0 4px; }
+  .AppHeader { background: #24292f; color: #fff; padding: 12px 24px; font-size: 14px; }
+  .AppHeader a { color: #fff; }
+  .AppHeader .sep { color: #8b949e; margin: 0 4px; }
 
-  .container { max-width: 1012px; margin: 0 auto; padding: 24px 16px; }
-  .pr-header { margin-bottom: 16px; border-bottom: 1px solid #d0d7de; padding-bottom: 16px; }
-  .pr-title { font-size: 26px; font-weight: 400; }
-  .pr-title .number { color: #656d76; }
-  .pr-meta { margin-top: 8px; font-size: 14px; color: #656d76; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .container-xl { max-width: 1012px; margin: 0 auto; padding: 24px 16px; }
 
-  .badge { display: inline-flex; align-items: center; gap: 4px; padding: 2px 10px; border-radius: 12px; font-size: 13px; font-weight: 600; }
-  .badge-merged { background: #8250df; color: #fff; }
-  .badge-open { background: #1a7f37; color: #fff; }
+  /* PR header — matches real GitHub structure */
+  .gh-header { margin-bottom: 16px; border-bottom: 1px solid #d0d7de; padding-bottom: 16px; }
+  .gh-header-title { font-size: 26px; font-weight: 400; display: flex; align-items: baseline; gap: 8px; }
+  .gh-header-title .f1-light { color: #656d76; font-weight: 300; }
+  .js-issue-title { font-weight: 400; }
+  .gh-header-meta { margin-top: 8px; font-size: 14px; color: #656d76; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 
-  .layout { display: flex; gap: 24px; }
-  .main { flex: 1; min-width: 0; }
-  .sidebar { width: 260px; flex-shrink: 0; }
+  /* State badge — mirrors real GitHub classes */
+  .State { display: inline-flex; align-items: center; gap: 4px; padding: 2px 10px; border-radius: 12px; font-size: 13px; font-weight: 600; }
+  .State--merged { background: #8250df; color: #fff; }
+  .State--open { background: #1a7f37; color: #fff; }
+  .State--closed { background: #cf222e; color: #fff; }
 
-  .card { background: #fff; border: 1px solid #d0d7de; border-radius: 6px; margin-bottom: 16px; }
-  .card-header { padding: 12px 16px; font-size: 14px; font-weight: 600; border-bottom: 1px solid #d0d7de; background: #f6f8fa; border-radius: 6px 6px 0 0; }
-  .card-body { padding: 16px; font-size: 14px; }
+  .Layout { display: flex; gap: 24px; }
+  .Layout-main { flex: 1; min-width: 0; }
+  .Layout-sidebar { width: 260px; flex-shrink: 0; }
 
-  .pr-body p { margin-bottom: 12px; }
-  .pr-body code { background: #eff1f3; padding: 2px 6px; border-radius: 4px; font-size: 13px; }
+  /* Timeline / comment structure */
+  .TimelineItem { background: #fff; border: 1px solid #d0d7de; border-radius: 6px; margin-bottom: 16px; }
+  .timeline-comment-header { padding: 12px 16px; font-size: 14px; font-weight: 600; border-bottom: 1px solid #d0d7de; background: #f6f8fa; border-radius: 6px 6px 0 0; }
+  .comment-body { padding: 16px; font-size: 14px; }
+  .comment-body.markdown-body p { margin-bottom: 12px; }
+  .comment-body code { background: #eff1f3; padding: 2px 6px; border-radius: 4px; font-size: 13px; }
 
+  /* Merge event in timeline */
+  .TimelineItem--condensed { background: transparent; border: none; padding: 8px 0; margin-bottom: 8px; }
+  .TimelineItem--condensed .author { font-weight: 600; }
+
+  /* Tabnav — PR tabs (Conversation, Commits, Checks, Files changed) */
+  .tabnav { border-bottom: 1px solid #d0d7de; margin-bottom: 16px; }
+  .tabnav-tabs { display: flex; gap: 0; }
+  .tabnav-tab { padding: 8px 16px; font-size: 14px; color: #656d76; border: 1px solid transparent; border-bottom: none; margin-bottom: -1px; }
+  .tabnav-tab.selected { color: #1f2328; font-weight: 600; background: #fff; border-color: #d0d7de; border-bottom-color: #fff; border-radius: 6px 6px 0 0; }
+  .tabnav-tab:hover { color: #1f2328; }
+
+  /* Sidebar */
   .sidebar-section { margin-bottom: 16px; padding-bottom: 16px; border-bottom: 1px solid #d0d7de; }
   .sidebar-section:last-child { border-bottom: none; }
-  .sidebar-label { font-size: 12px; font-weight: 600; color: #656d76; text-transform: uppercase; margin-bottom: 6px; }
+  .sidebar-heading { font-size: 12px; font-weight: 600; color: #656d76; text-transform: uppercase; margin-bottom: 6px; }
 
-  .reviewer { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; font-size: 14px; }
-  .reviewer .status-approved { color: #1a7f37; font-weight: 600; }
-  .reviewer .status-changes { color: #cf222e; font-weight: 600; }
+  /* Reviewer items in sidebar */
+  .review-status-item { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; font-size: 14px; }
+  .review-status-item .status-approved { color: #1a7f37; font-weight: 600; }
+  .review-status-item .status-changes { color: #cf222e; font-weight: 600; }
   .avatar { width: 20px; height: 20px; border-radius: 50%; background: #ddd; display: inline-block; text-align: center; font-size: 11px; line-height: 20px; color: #656d76; }
 
-  .check-item { display: flex; align-items: center; gap: 8px; padding: 8px 16px; border-bottom: 1px solid #d0d7de; font-size: 14px; }
-  .check-item:last-child { border-bottom: none; }
-  .check-icon { width: 18px; height: 18px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; color: #fff; flex-shrink: 0; }
-  .check-pass { background: #1a7f37; }
-  .check-fail { background: #cf222e; }
-  .check-name { flex: 1; }
-  .check-required { font-size: 12px; color: #656d76; }
+  /* Checks on checks tab — merge-status-item structure */
+  .merge-status-list { border: 1px solid #d0d7de; border-radius: 6px; background: #fff; }
+  .merge-status-item { display: flex; align-items: center; gap: 8px; padding: 8px 16px; border-bottom: 1px solid #d0d7de; font-size: 14px; }
+  .merge-status-item:last-child { border-bottom: none; }
+  .status-icon { width: 18px; height: 18px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; color: #fff; flex-shrink: 0; }
+  .octicon-check { background: #1a7f37; }
+  .octicon-x { background: #cf222e; }
+  .merge-status-item .check-name { flex: 1; }
+  .merge-status-item .text-small { font-size: 12px; color: #656d76; }
 </style>
 </head>
 <body>
 
-<div class="header">
+<!-- GitHub top nav -->
+<div class="AppHeader">
   <a href="#">example-org</a><span class="sep">/</span><a href="#">example-repo</a>
 </div>
 
-<div class="container">
+<div class="container-xl">
 
-  <!-- PR Header -->
-  <div class="pr-header" data-pr-number="42">
-    <h1 class="pr-title">Add rate limiting to payment processor <span class="number">#42</span></h1>
-    <div class="pr-meta">
-      <span class="merge-status badge badge-merged" data-status="merged">Merged</span>
-      <span><a class="pr-author" href="#" data-user="alice">alice</a> merged 3 commits into <code>main</code> from <code>feature/rate-limit</code></span>
+  <!-- PR Header — real GitHub uses h1.gh-header-title with bdi.js-issue-title -->
+  <div class="gh-header">
+    <h1 class="gh-header-title">
+      <bdi class="js-issue-title markdown-title">Add rate limiting to payment processor</bdi>
+      <span class="f1-light">#42</span>
+    </h1>
+    <div class="gh-header-meta">
+      <span class="State State--merged">Merged</span>
+      <span>
+        <a class="author" href="/alice">alice</a> merged 3 commits into
+        <code>main</code> from <code>feature/rate-limit</code>
+      </span>
     </div>
   </div>
 
-  <div class="layout">
+  <!-- Tab navigation -->
+  <nav class="tabnav">
+    <div class="tabnav-tabs">
+      <a class="tabnav-tab selected" href="/example-org/example-repo/pull/42">Conversation</a>
+      <a class="tabnav-tab" href="/example-org/example-repo/pull/42/commits">Commits <span class="Counter">3</span></a>
+      <a class="tabnav-tab" href="/example-org/example-repo/pull/42/checks">Checks <span class="Counter">4</span></a>
+      <a class="tabnav-tab" href="/example-org/example-repo/pull/42/files">Files changed <span class="Counter">7</span></a>
+    </div>
+  </nav>
+
+  <div class="Layout">
 
     <!-- Main Content -->
-    <div class="main">
+    <div class="Layout-main">
 
-      <!-- PR Body / Description -->
-      <div class="card">
-        <div class="card-header">Description</div>
-        <div class="card-body pr-body" data-section="description">
+      <!-- PR Body / Description — first .comment-body in timeline is the PR description -->
+      <div class="TimelineItem">
+        <div class="timeline-comment-header">
+          <a class="author" href="/alice">alice</a> commented
+        </div>
+        <div class="comment-body markdown-body">
           <p>Adds token-bucket rate limiting to the payment processor to prevent downstream service overload during peak traffic.</p>
           <p>Resolves <a href="https://acme-corp.atlassian.net/browse/ENG-123">ENG-123</a></p>
           <p>Related to <a href="https://acme-corp.atlassian.net/browse/ENG-456">ENG-456</a></p>
@@ -91,75 +130,38 @@
         </div>
       </div>
 
-      <!-- CI Checks -->
-      <div class="card" data-section="checks">
-        <div class="card-header">Checks <span style="font-weight:400; color:#656d76;">— 3 of 3 required checks passed</span></div>
-        <div class="check-item" data-check="ci/tests" data-status="pass" data-required="true">
-          <span class="check-icon check-pass">✓</span>
-          <span class="check-name">ci/tests</span>
-          <span class="check-required">Required</span>
-          <a class="check-details" href="https://ci.example.com/tests/123">Details</a>
-        </div>
-        <div class="check-item" data-check="ci/lint" data-status="pass" data-required="true">
-          <span class="check-icon check-pass">✓</span>
-          <span class="check-name">ci/lint</span>
-          <span class="check-required">Required</span>
-          <a class="check-details" href="https://ci.example.com/lint/456">Details</a>
-        </div>
-        <div class="check-item" data-check="security-scan" data-status="fail" data-required="true">
-          <span class="check-icon check-fail">✗</span>
-          <span class="check-name">security-scan</span>
-          <span class="check-required">Required</span>
-          <a class="check-details" href="https://ci.example.com/security/789">Details</a>
-        </div>
-        <div class="check-item" data-check="deploy-preview" data-status="pass" data-required="false">
-          <span class="check-icon check-pass">✓</span>
-          <span class="check-name">deploy-preview</span>
-          <span class="check-required" style="color:#8b949e;">Optional</span>
-          <a class="check-details" href="https://ci.example.com/deploy/012">Details</a>
-        </div>
+      <!-- Merge event in timeline -->
+      <div class="TimelineItem TimelineItem--condensed">
+        <span class="author">dave</span> merged commit <code>a1b2c3d</code> into <code>main</code>
       </div>
 
     </div>
 
     <!-- Sidebar -->
-    <div class="sidebar">
-      <div class="card">
-        <div class="card-body">
+    <div class="Layout-sidebar">
+      <div class="sidebar-section" id="partial-discussion-sidebar">
 
-          <div class="sidebar-section" data-section="reviewers">
-            <div class="sidebar-label">Reviewers</div>
-            <div class="reviewer" data-user="bob" data-review="approved">
-              <span class="avatar">B</span>
-              <span>bob</span>
-              <span class="status-approved">Approved</span>
-            </div>
-            <div class="reviewer" data-user="carol" data-review="approved">
-              <span class="avatar">C</span>
-              <span>carol</span>
-              <span class="status-approved">Approved</span>
-            </div>
+        <!-- Reviewers -->
+        <div class="sidebar-section">
+          <div class="sidebar-heading">Reviewers</div>
+          <div class="review-status-item">
+            <span class="avatar">B</span>
+            <a class="assignee" href="/bob">bob</a>
+            <span class="status-approved">Approved</span>
           </div>
-
-          <div class="sidebar-section" data-section="merged-by">
-            <div class="sidebar-label">Merged by</div>
-            <div class="reviewer" data-user="dave">
-              <span class="avatar">D</span>
-              <span>dave</span>
-            </div>
+          <div class="review-status-item">
+            <span class="avatar">C</span>
+            <a class="assignee" href="/carol">carol</a>
+            <span class="status-approved">Approved</span>
           </div>
-
-          <div class="sidebar-section" data-section="labels">
-            <div class="sidebar-label">Labels</div>
-            <span style="background:#ddf4ff; color:#0969da; padding:2px 8px; border-radius:12px; font-size:12px; font-weight:500;">enhancement</span>
-          </div>
-
-          <div class="sidebar-section" data-section="branch">
-            <div class="sidebar-label">Branch</div>
-            <code style="font-size:13px;">feature/rate-limit</code> → <code style="font-size:13px;">main</code>
-          </div>
-
         </div>
+
+        <!-- Labels -->
+        <div class="sidebar-section">
+          <div class="sidebar-heading">Labels</div>
+          <span style="background:#ddf4ff; color:#0969da; padding:2px 8px; border-radius:12px; font-size:12px; font-weight:500;">enhancement</span>
+        </div>
+
       </div>
     </div>
 

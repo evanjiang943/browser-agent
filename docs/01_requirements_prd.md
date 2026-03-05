@@ -1,5 +1,7 @@
 # Evidence Collection Agent — PRD (Claude Code Build Guide)
 
+> **Implementation status**: Phases 1 and 2 are complete. FR1–FR7 are implemented. Acceptance criteria met for tickets (Playbook A) and GitHub checks (Playbook B, validated against live PRs). Code recency (Playbook D) is implemented. LinkedIn (Playbook C) and ERP (Playbook E) remain as stubs. See `04_playbooks.md` for details.
+
 ## 1. Objective
 Build an **Evidence Collection Agent** that automates audit evidence gathering across web-based enterprise tools using a **general browser automation core** plus optional integrations. The agent must handle **high-volume sample sets**, produce **evidence-grade artifacts**, and remain **ERP-agnostic**.
 
@@ -145,15 +147,18 @@ out/
 ---
 
 ## 11. Phased plan
-### Phase 1 (MVP)
+### Phase 1 (MVP) — Done
 - CLI + playbook runner
 - Ticket screenshots + CSV extraction
 - Evidence folder + manifest/logging
 
-### Phase 2
-- GitHub checks + CI traversal
-- Resumability + parallelism (subagents/workers)
+### Phase 2 — Done
+- GitHub checks + CI traversal (validated against real PRs)
+- Resumability + concurrency (BaseRunner step engine, PlaybookRunner shared orchestration)
+- Code recency + blame + materiality playbook
+- Hardening: retry/throttling/circuit-breaker
 
-### Phase 3
-- LinkedIn enrichment + code blame workflows
-- Adapter system formalization
+### Phase 3 — Remaining
+- LinkedIn enrichment playbook
+- ERP analogue playbook
+- JiraLike and LinkedIn adapters

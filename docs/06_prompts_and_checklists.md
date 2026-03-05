@@ -44,24 +44,25 @@
 
 ## E) Engineering checklists
 ### Evidence output checklist
-- [ ] Every sample has its own folder
-- [ ] Screenshots have consistent names
-- [ ] Downloads stored under `downloads/`
-- [ ] `notes.json` includes status + steps + errors
-- [ ] `results.csv` has one row per sample
+- [x] Every sample has its own folder
+- [x] Screenshots have consistent names (`<sample_id>__<system>__<step>__<timestamp>__<n>.png`)
+- [x] Downloads stored under `downloads/`
+- [x] `notes.json` includes status + steps + errors + screenshots + sub_items
+- [x] `results.csv` has one row per sample
 
 ### Reliability checklist
-- [ ] Detect login redirects early
-- [ ] Configurable timeouts
-- [ ] Retries with backoff on transient failures
-- [ ] Rate limiting
-- [ ] Error screenshots on failure
+- [x] Detect login redirects early (`LoginRedirectError`)
+- [x] Configurable timeouts (`BrowserConfig.timeout_ms`)
+- [x] Retries with backoff on transient failures (`retry_async`)
+- [x] Rate limiting (`Throttle` sliding-window)
+- [x] Error screenshots on failure (`_capture_error_screenshot`)
+- [x] Circuit breaker pauses on repeated failures
 
 ### Scale checklist
-- [ ] Progress logging (sample i/N)
-- [ ] Partial completion supported
-- [ ] Resume works after interruption
-- [ ] Optional concurrency with safe limits (2–4)
+- [x] Progress logging (JSONL event stream)
+- [x] Partial completion supported (`status: partial`)
+- [x] Resume works after interruption (skip completed samples/steps)
+- [x] Optional concurrency with safe limits (`asyncio.Semaphore`)
 
 ---
 

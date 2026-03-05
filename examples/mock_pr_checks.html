@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Add rate limiting to payment processor · Pull Request #42 · example-org/example-repo</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; color: #1f2328; background: #f6f8fa; line-height: 1.5; }
+  a { color: #0969da; text-decoration: none; }
+  .container-xl { max-width: 1012px; margin: 0 auto; padding: 24px 16px; }
+  .gh-header { margin-bottom: 16px; border-bottom: 1px solid #d0d7de; padding-bottom: 16px; }
+  .gh-header-title { font-size: 26px; font-weight: 400; display: flex; align-items: baseline; gap: 8px; }
+  .gh-header-title .f1-light { color: #656d76; }
+  .State { display: inline-flex; align-items: center; gap: 4px; padding: 2px 10px; border-radius: 12px; font-size: 13px; font-weight: 600; }
+  .State--merged { background: #8250df; color: #fff; }
+  .gh-header-meta { margin-top: 8px; font-size: 14px; color: #656d76; display: flex; align-items: center; gap: 8px; }
+
+  .tabnav { border-bottom: 1px solid #d0d7de; margin-bottom: 16px; }
+  .tabnav-tabs { display: flex; gap: 0; }
+  .tabnav-tab { padding: 8px 16px; font-size: 14px; color: #656d76; border: 1px solid transparent; border-bottom: none; margin-bottom: -1px; }
+  .tabnav-tab.selected { color: #1f2328; font-weight: 600; background: #fff; border-color: #d0d7de; border-bottom-color: #fff; border-radius: 6px 6px 0 0; }
+
+  .merge-status-list { border: 1px solid #d0d7de; border-radius: 6px; background: #fff; }
+  .merge-status-item { display: flex; align-items: center; gap: 8px; padding: 8px 16px; border-bottom: 1px solid #d0d7de; font-size: 14px; }
+  .merge-status-item:last-child { border-bottom: none; }
+  .status-icon { width: 18px; height: 18px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; color: #fff; flex-shrink: 0; }
+  .octicon-check { background: #1a7f37; }
+  .octicon-x { background: #cf222e; }
+  .octicon-dot-fill { background: #bf8700; }
+  .check-run-name { flex: 1; font-weight: 500; }
+  .text-small { font-size: 12px; color: #656d76; }
+</style>
+</head>
+<body>
+
+<div class="container-xl">
+
+  <!-- Shared PR header -->
+  <div class="gh-header">
+    <h1 class="gh-header-title">
+      <bdi class="js-issue-title markdown-title">Add rate limiting to payment processor</bdi>
+      <span class="f1-light">#42</span>
+    </h1>
+    <div class="gh-header-meta">
+      <span class="State State--merged">Merged</span>
+      <span><a class="author" href="/alice">alice</a> merged 3 commits into <code>main</code></span>
+    </div>
+  </div>
+
+  <!-- Tabs — Checks tab is selected -->
+  <nav class="tabnav">
+    <div class="tabnav-tabs">
+      <a class="tabnav-tab" href="/example-org/example-repo/pull/42">Conversation</a>
+      <a class="tabnav-tab" href="/example-org/example-repo/pull/42/commits">Commits</a>
+      <a class="tabnav-tab selected" href="/example-org/example-repo/pull/42/checks">Checks</a>
+      <a class="tabnav-tab" href="/example-org/example-repo/pull/42/files">Files changed</a>
+    </div>
+  </nav>
+
+  <!-- Check runs list -->
+  <div class="merge-status-list">
+    <div class="merge-status-item" data-check-run-name="ci/tests">
+      <span class="status-icon octicon-check">✓</span>
+      <span class="check-run-name">ci/tests</span>
+      <span class="text-small">Required</span>
+      <a class="details-link" href="https://ci.example.com/tests/123">Details</a>
+    </div>
+    <div class="merge-status-item" data-check-run-name="ci/lint">
+      <span class="status-icon octicon-check">✓</span>
+      <span class="check-run-name">ci/lint</span>
+      <span class="text-small">Required</span>
+      <a class="details-link" href="https://ci.example.com/lint/456">Details</a>
+    </div>
+    <div class="merge-status-item" data-check-run-name="security-scan">
+      <span class="status-icon octicon-x">✗</span>
+      <span class="check-run-name">security-scan</span>
+      <span class="text-small">Required</span>
+      <a class="details-link" href="https://ci.example.com/security/789">Details</a>
+    </div>
+    <div class="merge-status-item" data-check-run-name="deploy-preview">
+      <span class="status-icon octicon-check">✓</span>
+      <span class="check-run-name">deploy-preview</span>
+      <span class="text-small">Optional</span>
+      <a class="details-link" href="https://ci.example.com/deploy/012">Details</a>
+    </div>
+  </div>
+
+</div>
+
+</body>
+</html>
