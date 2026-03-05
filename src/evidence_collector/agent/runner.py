@@ -178,11 +178,17 @@ class AgentRunner:
                         pass
 
                 try:
+                    import anthropic as _anthropic
+
                     recorded = await retry_async(
                         lambda c=ctx: run_agent_for_sample(c, client),
                         max_attempts=config.throttle.retry_attempts,
                         backoff_base=config.throttle.backoff_base_seconds,
-                        retryable_exceptions=(TimeoutError, ConnectionError),
+                        retryable_exceptions=(
+                            TimeoutError,
+                            ConnectionError,
+                            _anthropic.RateLimitError,
+                        ),
                     )
                     status = ctx.notes.status
                     if status in ("success", "partial"):

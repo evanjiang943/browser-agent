@@ -105,13 +105,16 @@ async def query_selector_text(
     page = ctx.pages.get(page_id)
     if page is None:
         return {"error": "INVALID_PAGE_ID", "page_id": page_id}
-    el = await page.query_selector(selector)
-    if el is None:
-        return {"found": False, "text": "", "href": None, "tag": None}
-    text = (await el.inner_text()).strip()
-    href = await el.get_attribute("href")
-    tag = await el.evaluate("el => el.tagName.toLowerCase()")
-    return {"found": True, "text": text, "href": href, "tag": tag}
+    try:
+        el = await page.query_selector(selector)
+        if el is None:
+            return {"found": False, "text": "", "href": None, "tag": None}
+        text = (await el.inner_text()).strip()
+        href = await el.get_attribute("href")
+        tag = await el.evaluate("el => el.tagName.toLowerCase()")
+        return {"found": True, "text": text, "href": href, "tag": tag}
+    except Exception as exc:
+        return {"error": "QUERY_FAILED", "message": str(exc)}
 
 
 async def query_selector_all_text(
@@ -120,15 +123,18 @@ async def query_selector_all_text(
     page = ctx.pages.get(page_id)
     if page is None:
         return {"error": "INVALID_PAGE_ID", "page_id": page_id}
-    elements = await page.query_selector_all(selector)
-    actual_limit = limit or 50
-    items = []
-    for el in elements[:actual_limit]:
-        text = (await el.inner_text()).strip()
-        href = await el.get_attribute("href")
-        tag = await el.evaluate("el => el.tagName.toLowerCase()")
-        items.append({"text": text, "href": href, "tag": tag})
-    return {"count": len(elements), "items": items}
+    try:
+        elements = await page.query_selector_all(selector)
+        actual_limit = limit or 50
+        items = []
+        for el in elements[:actual_limit]:
+            text = (await el.inner_text()).strip()
+            href = await el.get_attribute("href")
+            tag = await el.evaluate("el => el.tagName.toLowerCase()")
+            items.append({"text": text, "href": href, "tag": tag})
+        return {"count": len(elements), "items": items}
+    except Exception as exc:
+        return {"error": "QUERY_FAILED", "message": str(exc)}
 
 
 async def tool_find_links(
@@ -262,7 +268,16 @@ async def execute_tool(ctx: AgentContext, tool_name: str, params: dict) -> dict:
     if handler is None:
         return {"error": "UNKNOWN_TOOL", "tool": tool_name}
 
-    # Route params based on handler signature
+    try:
+        return await _dispatch_tool(ctx, tool_name, handler, params)
+    except Exception as exc:
+        return {"error": "TOOL_ERROR", "tool": tool_name, "message": str(exc)}
+
+
+async def _dispatch_tool(
+    ctx: AgentContext, tool_name: str, handler: Any, params: dict[str, Any]
+) -> dict[str, Any]:
+    """Route params and call the handler."""
     if tool_name == "open_url":
         return await handler(ctx, url=params["url"])
     elif tool_name == "click_element":

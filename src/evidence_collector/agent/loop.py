@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
 from dataclasses import dataclass, field
@@ -56,6 +57,39 @@ class AgentContext:
             self.notes = SampleNotes(sample_id=self.sample_id, status="pending")
 
 
+async def _api_call_with_retry(
+    client: Any,
+    ctx: AgentContext,
+    system: str,
+    messages: list[dict[str, Any]],
+    tools: list[dict],
+    max_retries: int = 5,
+    base_delay: float = 10.0,
+) -> Any:
+    """Call client.messages.create with retry on rate-limit errors."""
+    import anthropic
+
+    for attempt in range(1, max_retries + 1):
+        try:
+            return await client.messages.create(
+                model=ctx.config.model,
+                system=system,
+                messages=messages,
+                tools=tools,
+                max_tokens=4096,
+                temperature=ctx.config.temperature,
+            )
+        except anthropic.RateLimitError:
+            if attempt == max_retries:
+                raise
+            delay = base_delay * attempt
+            logger.warning(
+                "Rate limited on turn %d for %s (attempt %d/%d), waiting %.0fs",
+                ctx.turn_count, ctx.sample_id, attempt, max_retries, delay,
+            )
+            await asyncio.sleep(delay)
+
+
 async def run_agent_for_sample(
     ctx: AgentContext,
     client: Any,
@@ -84,13 +118,8 @@ async def run_agent_for_sample(
     while ctx.turn_count < ctx.task.max_turns:
         ctx.turn_count += 1
 
-        response = await client.messages.create(
-            model=ctx.config.model,
-            system=system,
-            messages=messages,
-            tools=tools,
-            max_tokens=4096,
-            temperature=ctx.config.temperature,
+        response = await _api_call_with_retry(
+            client, ctx, system, messages, tools,
         )
 
         ctx.run_logger.log(
