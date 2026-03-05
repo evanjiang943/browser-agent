@@ -1,0 +1,4 @@
+sample_id,status,pr_title,author,merge_status,approvers,ci_passed_count,ci_failed_count,ci_pending_count,linked_tickets,pr_page_screenshot,checks_page_screenshot
+5539467189ce,partial,📝 Clarify guidance on using `async def` without `await`,swastikpradhan1999,merged,"svlandeg,tiangolo",51,1,0,,5539467189ce__web__pr-main-page__20260305-052021__0.png,5539467189ce__web__pr-checks-page__20260305-052031__0.png
+4678d0b87612,partial,Improve documentation regarding json_schema_input_type,candleindark,merged,DouweM,61,0,0,,4678d0b87612__web__pr-main-page__20260305-052255__0.png,4678d0b87612__web__pr-checks-page__20260305-052302__0.png
+c434a7011c80,partial,"Update macOS UI reference to ""System Settings""",abhiramk6,merged,,2,0,0,,c434a7011c80__web__pr-main-page__20260305-052430__0.png,c434a7011c80__web__pr-checks-page__20260305-052439__0.png

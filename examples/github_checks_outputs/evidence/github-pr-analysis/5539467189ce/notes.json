@@ -1,0 +1,25 @@
+{
+  "sample_id": "5539467189ce",
+  "status": "partial",
+  "steps_completed": [],
+  "errors": [],
+  "screenshots": [
+    "5539467189ce__web__pr-main-page__20260305-052021__0.png",
+    "5539467189ce__web__pr-checks-page__20260305-052031__0.png"
+  ],
+  "downloads": [],
+  "sub_items": {},
+  "result_data": {
+    "pr_title": "\ud83d\udcdd Clarify guidance on using `async def` without `await`",
+    "author": "swastikpradhan1999",
+    "merge_status": "merged",
+    "approvers": "svlandeg,tiangolo",
+    "ci_passed_count": "51",
+    "ci_failed_count": "1",
+    "ci_pending_count": "0",
+    "linked_tickets": "",
+    "pr_page_screenshot": "5539467189ce__web__pr-main-page__20260305-052021__0.png",
+    "checks_page_screenshot": "5539467189ce__web__pr-checks-page__20260305-052031__0.png"
+  },
+  "agent_trace_file": "agent_trace.jsonl"
+}

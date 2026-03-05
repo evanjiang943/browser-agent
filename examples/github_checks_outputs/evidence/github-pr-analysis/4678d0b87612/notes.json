@@ -1,0 +1,25 @@
+{
+  "sample_id": "4678d0b87612",
+  "status": "partial",
+  "steps_completed": [],
+  "errors": [],
+  "screenshots": [
+    "4678d0b87612__web__pr-main-page__20260305-052255__0.png",
+    "4678d0b87612__web__pr-checks-page__20260305-052302__0.png"
+  ],
+  "downloads": [],
+  "sub_items": {},
+  "result_data": {
+    "pr_title": "Improve documentation regarding json_schema_input_type",
+    "author": "candleindark",
+    "merge_status": "merged",
+    "approvers": "DouweM",
+    "ci_passed_count": "61",
+    "ci_failed_count": "0",
+    "ci_pending_count": "0",
+    "linked_tickets": "",
+    "pr_page_screenshot": "4678d0b87612__web__pr-main-page__20260305-052255__0.png",
+    "checks_page_screenshot": "4678d0b87612__web__pr-checks-page__20260305-052302__0.png"
+  },
+  "agent_trace_file": "agent_trace.jsonl"
+}

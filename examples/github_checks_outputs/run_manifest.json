@@ -1,0 +1,32 @@
+{
+  "run_id": "github-pr-analysis-20260305-052010",
+  "playbook": "github-pr-analysis",
+  "input_file": "/var/folders/ct/q6dpb_2x3t965f8h8j56zpm80000gn/T/evidence_uploads_3wqjqeg8/4b8ba86ca66b.csv",
+  "output_dir": "/var/folders/ct/q6dpb_2x3t965f8h8j56zpm80000gn/T/evidence_output_lbvdpdb7/2d4929a067fd",
+  "config": {
+    "browser": {
+      "headless": true,
+      "timeout_ms": 30000,
+      "profile_dir": null
+    },
+    "throttle": {
+      "max_pages_per_minute": 20,
+      "retry_attempts": 3,
+      "backoff_base_seconds": 2.0
+    },
+    "screenshot": {
+      "mode": "viewport",
+      "quality": 90
+    },
+    "concurrency": 1,
+    "agent": {
+      "model": "claude-sonnet-4-20250514",
+      "max_turns": 30,
+      "temperature": 0.0,
+      "api_key_env": "ANTHROPIC_API_KEY"
+    }
+  },
+  "started_at": "2026-03-05T05:20:10.985012+00:00",
+  "finished_at": "2026-03-05T05:25:56.904020+00:00",
+  "versions": {}
+}
