@@ -87,7 +87,7 @@ out_dir/
 ## Repository Layout
 
 ```
-├── PRODUCT.md              # Product description and tech specs
+├── README.md               # Product description and tech specs
 ├── CLAUDE.md               # This file
 ├── examples/               # Example CSVs and task YAML files
 │   ├── tasks/              # Task definitions (github-checks, code-recency, wikipedia-citations)
