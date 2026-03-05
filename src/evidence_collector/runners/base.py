@@ -277,6 +277,10 @@ class BaseRunner:
                 sub_items=restored_sub_items,
             )
             if existing_notes.get("status") == "success":
+                result = existing_notes.get("result_data", {})
+                if result:
+                    return result
+                # Fallback for old notes without result_data
                 result = {col: "" for col in self.result_schema}
                 result["sample_id"] = sample_id
                 result["status"] = "success"
@@ -318,8 +322,10 @@ class BaseRunner:
             ctx._notes.status = "partial"
         else:
             ctx._notes.status = "success"
+        result = self._build_result(ctx)
+        ctx._notes.result_data = result
         write_notes(ctx.sample_dir, ctx._notes.model_dump())
-        return self._build_result(ctx)
+        return result
 
     # ── Batch execution with concurrency ────────────────────────────
 
@@ -350,9 +356,11 @@ class BaseRunner:
                 self.run_logger.log(
                     "sample_skip", sample_id=sample_id, detail="already completed"
                 )
-                result = {col: "" for col in self.result_schema}
-                result["sample_id"] = sample_id
-                result["status"] = "success"
+                result = existing.get("result_data", {})
+                if not result:
+                    result = {col: "" for col in self.result_schema}
+                    result["sample_id"] = sample_id
+                    result["status"] = "success"
                 return result
 
             if circuit_breaker.is_open():
@@ -528,12 +536,14 @@ class PlaybookRunner(abc.ABC):
                 run_logger.log(
                     "sample_skip", sample_id=sample_id, detail="already completed"
                 )
-                result = {col: "" for col in result_cols}
-                result["sample_id"] = sample_id
-                result["status"] = "success"
-                for col in result_cols:
-                    if col in sample:
-                        result[col] = sample[col]
+                result = existing_notes.get("result_data", {})
+                if not result:
+                    result = {col: "" for col in result_cols}
+                    result["sample_id"] = sample_id
+                    result["status"] = "success"
+                    for col in result_cols:
+                        if col in sample:
+                            result[col] = sample[col]
                 return result
 
             # Circuit breaker check
@@ -559,6 +569,10 @@ class PlaybookRunner(abc.ABC):
                     )
                     if result["status"] in ("success", "partial"):
                         circuit_breaker.record_success()
+                        # Persist result_data for resumability
+                        notes = read_notes(sample_dir) or {}
+                        notes["result_data"] = result
+                        write_notes(sample_dir, notes)
                     else:
                         circuit_breaker.record_failure()
                     run_logger.log(

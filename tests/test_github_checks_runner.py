@@ -320,16 +320,27 @@ class TestRunAsync:
         mock_browser: AsyncMock,
         mock_github_adapter: AsyncMock,
     ):
-        """Completed samples are skipped on re-run."""
+        """Completed samples are skipped on re-run with result data preserved."""
         runner = _make_runner(sample_csv, tmp_path)
         out_dir = tmp_path / "output"
 
-        # Pre-create notes.json with success status
+        # Pre-create notes.json with success status and result_data
         evidence_dir = out_dir / "evidence" / "github-checks"
         sample_dir = evidence_dir / "pr-42"
         sample_dir.mkdir(parents=True)
         (sample_dir / "screenshots").mkdir()
         (sample_dir / "downloads").mkdir()
+        saved_result = {
+            "sample_id": "pr-42",
+            "status": "success",
+            "github_url": "https://github.com/org/repo/pull/42",
+            "title": "Fix auth bug",
+            "pr_creator": "alice",
+            "approvers": "bob;carol",
+            "merger": "dave",
+            "merge_status": "merged",
+            "check_summary": "passed=3; failed=0",
+        }
         write_notes(sample_dir, {
             "sample_id": "pr-42",
             "status": "success",
@@ -337,6 +348,7 @@ class TestRunAsync:
             "errors": [],
             "screenshots": [],
             "downloads": [],
+            "result_data": saved_result,
         })
 
         # Patch BrowserAdapter and GitHubAdapter to avoid real browser
@@ -353,9 +365,18 @@ class TestRunAsync:
         # process_sample should NOT have been called (open never called)
         mock_browser.open.assert_not_called()
 
-        # results.csv should exist with the skipped sample
+        # results.csv should exist with the skipped sample and preserved data
         results_csv = out_dir / "results.csv"
         assert results_csv.exists()
+
+        with open(results_csv) as f:
+            reader = csv.DictReader(f)
+            rows = list(reader)
+            assert len(rows) == 1
+            assert rows[0]["sample_id"] == "pr-42"
+            assert rows[0]["title"] == "Fix auth bug"
+            assert rows[0]["pr_creator"] == "alice"
+            assert rows[0]["approvers"] == "bob;carol"
 
     def test_writes_results_csv(
         self,

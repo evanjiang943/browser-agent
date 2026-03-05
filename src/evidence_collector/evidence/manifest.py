@@ -29,6 +29,7 @@ class SampleNotes(BaseModel):
     screenshots: list[str] = []
     downloads: list[str] = []
     sub_items: dict[str, SubItemNotes] = {}
+    result_data: dict = {}
 
 
 class RunManifest(BaseModel):

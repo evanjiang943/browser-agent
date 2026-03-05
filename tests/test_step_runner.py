@@ -220,6 +220,24 @@ class TestRunSample:
         assert result["status"] == "failed"
         assert "unexpected" in result["error"]
 
+    def test_persists_result_data_in_notes(self, tmp_path):
+        """Successful run_sample persists result_data into notes.json."""
+        async def step_a(ctx: SampleContext) -> None:
+            ctx.record(title="Hello", url="http://example.com")
+
+        steps = [StepDefinition(name="step_a", fn=step_a)]
+        runner = _make_runner(steps, SCHEMA, tmp_path)
+        result = asyncio.run(runner.run_sample({"sample_id": "s1"}))
+
+        assert result["title"] == "Hello"
+
+        notes = json.loads(
+            (tmp_path / "evidence" / "s1" / "notes.json").read_text()
+        )
+        assert notes["result_data"]["title"] == "Hello"
+        assert notes["result_data"]["url"] == "http://example.com"
+        assert notes["result_data"]["status"] == "success"
+
     def test_result_schema_fills_missing_with_empty(self, tmp_path):
         async def step(ctx: SampleContext) -> None:
             ctx.record(title="Only title set")
@@ -301,6 +319,42 @@ class TestRunSample:
         assert result["status"] == "success"
         assert call_log == []  # No steps executed
 
+    def test_resumability_preserves_result_data(self, tmp_path):
+        """Skipped samples return persisted result_data, not empty rows."""
+        async def step_a(ctx: SampleContext) -> None:
+            ctx.record(title="Hello", url="http://example.com")
+
+        steps = [StepDefinition(name="step_a", fn=step_a)]
+        runner = _make_runner(steps, SCHEMA, tmp_path)
+
+        saved_result = {
+            "sample_id": "s1",
+            "status": "success",
+            "title": "Hello",
+            "url": "http://example.com",
+            "error": "",
+        }
+        sample_dir = tmp_path / "evidence" / "s1"
+        sample_dir.mkdir(parents=True)
+        (sample_dir / "screenshots").mkdir()
+        (sample_dir / "downloads").mkdir()
+        (sample_dir / "notes.json").write_text(
+            json.dumps({
+                "sample_id": "s1",
+                "status": "success",
+                "steps_completed": ["step_a"],
+                "errors": [],
+                "screenshots": [],
+                "downloads": [],
+                "result_data": saved_result,
+            })
+        )
+
+        result = asyncio.run(runner.run_sample({"sample_id": "s1"}))
+        assert result["status"] == "success"
+        assert result["title"] == "Hello"
+        assert result["url"] == "http://example.com"
+
 
 # ── BaseRunner.run_all ───────────────────────────────────────────────────
 
@@ -336,7 +390,7 @@ class TestRunAll:
         steps = [StepDefinition(name="step", fn=step)]
         runner = _make_runner(steps, SCHEMA, tmp_path)
 
-        # Pre-complete s1
+        # Pre-complete s1 with result_data
         sample_dir = tmp_path / "evidence" / "s1"
         sample_dir.mkdir(parents=True)
         (sample_dir / "screenshots").mkdir()
@@ -349,6 +403,13 @@ class TestRunAll:
                 "errors": [],
                 "screenshots": [],
                 "downloads": [],
+                "result_data": {
+                    "sample_id": "s1",
+                    "status": "success",
+                    "title": "Preserved",
+                    "url": "http://s1.com",
+                    "error": "",
+                },
             })
         )
 
@@ -360,6 +421,7 @@ class TestRunAll:
         assert "s1" not in call_log
         assert "s2" in call_log
         assert results[0]["status"] == "success"
+        assert results[0]["title"] == "Preserved"
         assert results[1]["status"] == "success"
 
 
