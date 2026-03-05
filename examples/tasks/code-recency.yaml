@@ -1,0 +1,91 @@
+task_name: code-recency
+goal: >
+  Assess whether a code snippet was recently modified in a GitHub
+  repository and whether any changes are materially significant
+  for audit purposes.
+
+instructions: |
+  For each sample, you receive a repo_url, code_string_hash, and
+  since_days (the recency window in days).
+
+  1. Navigate to the repository on GitHub.
+  2. Use GitHub's code search or file browser to find the file
+     containing the code referenced by code_string_hash.
+     Record file_path and file_url.
+  3. Switch to the blame view for that file. Find the blame
+     annotations for the relevant lines.
+     Record last_change_date and commit_url.
+  4. Determine within_window:
+     - "true" if last_change_date is within since_days of today
+     - "false" if it is older
+     - "unknown" if the date cannot be parsed
+  5. Open the commit page. Take a screenshot of the diff.
+     Assess material_change_flag:
+     - A change is material if it affects constants, thresholds,
+       logic conditions, formula terms, rounding, units, timezones,
+       filters, defaults, or fallbacks.
+     - Variable renames and comment-only changes are NOT material.
+     Write a 1-3 sentence rationale an auditor can understand.
+  6. If within_window is "false": scan nearby lines in the same
+     function/class scope for recent blame entries. If found:
+     - Record downstream_recent_change as "true"
+     - Record downstream_commit_url
+     - Assess downstream_material_flag with the same rubric
+     - Write downstream_rationale
+     If no nearby recent changes, record "false" for
+     downstream_recent_change.
+  7. Use get_required_fields to verify all required fields are
+     recorded, then stop.
+
+  IMPORTANT: Never record the raw code snippet text anywhere.
+  Only reference it by code_string_hash. Take a screenshot before
+  extracting data from each page.
+
+input_columns:
+  - repo_url
+  - code_string_hash
+  - since_days
+
+output_schema:
+  - name: repo_url
+    description: "Repository URL"
+  - name: branch
+    description: "Branch name where the file was found (e.g., main)"
+    required: false
+  - name: code_string_hash
+    description: "Hash identifying the code snippet (from input)"
+  - name: file_path
+    description: "Path to the file containing the code snippet"
+  - name: file_url
+    description: "Full GitHub URL to the file"
+  - name: last_change_date
+    description: "Date of the most recent commit touching the relevant lines (YYYY-MM-DD)"
+  - name: commit_url
+    description: "URL of the most recent commit touching the relevant lines"
+  - name: within_window
+    description: "Whether last_change_date is within the recency window: true, false, or unknown"
+  - name: material_change_flag
+    description: "Whether the change is materially significant: true or false"
+  - name: rationale
+    description: "1-3 sentence explanation of the materiality assessment"
+  - name: downstream_recent_change
+    description: "Whether nearby code in the same scope was recently changed: true or false"
+    required: false
+  - name: downstream_commit_url
+    description: "URL of the nearby recent commit, if any"
+    required: false
+  - name: downstream_material_flag
+    description: "Whether the nearby change is materially significant: true or false"
+    required: false
+  - name: downstream_rationale
+    description: "Explanation of downstream materiality assessment"
+    required: false
+
+constraints:
+  - Never record raw code snippet text — only reference by hash
+  - Take a screenshot before extracting data from each page
+  - Do not fabricate dates or commit URLs
+  - If blame data cannot be parsed, record within_window as "unknown"
+
+max_pages_per_sample: 10
+max_turns: 35

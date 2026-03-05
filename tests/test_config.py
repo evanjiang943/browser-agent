@@ -5,6 +5,7 @@ import json
 import pytest
 
 from evidence_collector.config import (
+    AgentConfig,
     BrowserConfig,
     RunConfig,
     ScreenshotConfig,
@@ -42,12 +43,27 @@ class TestScreenshotConfig:
         assert c.quality == 90
 
 
+class TestAgentConfig:
+    def test_defaults(self):
+        c = AgentConfig()
+        assert c.model == "claude-sonnet-4-20250514"
+        assert c.max_turns == 30
+        assert c.temperature == 0.0
+        assert c.api_key_env == "ANTHROPIC_API_KEY"
+
+    def test_custom(self):
+        c = AgentConfig(model="claude-haiku-4-5-20251001", max_turns=10, temperature=0.5)
+        assert c.model == "claude-haiku-4-5-20251001"
+        assert c.max_turns == 10
+
+
 class TestRunConfig:
     def test_defaults(self):
         c = RunConfig()
         assert isinstance(c.browser, BrowserConfig)
         assert isinstance(c.throttle, ThrottleConfig)
         assert isinstance(c.screenshot, ScreenshotConfig)
+        assert isinstance(c.agent, AgentConfig)
         assert c.concurrency == 1
 
     def test_nested_override(self):

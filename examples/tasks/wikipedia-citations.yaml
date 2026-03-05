@@ -1,0 +1,86 @@
+task_name: wikipedia-citations
+goal: >
+  Verify the accuracy of the oldest cited claim in a Wikipedia
+  article by checking the original source.
+
+instructions: |
+  For each sample, you receive a Wikipedia article URL.
+
+  1. Open the Wikipedia article. Take a screenshot.
+     Record article_title from the page heading.
+  2. Scroll to the References section (usually at the bottom).
+     Read the footnote citations. Extract citation details:
+     source URLs, years, and the claims they support.
+  3. Identify the single oldest citation by year.
+     Record: cite_id (the footnote number or ref name),
+     citation_year, source_url, and claim_text (the Wikipedia
+     sentence that uses this citation).
+  4. Take a screenshot of the references section showing this
+     citation.
+  5. Try to open source_url to check if it is alive.
+     - If the page loads successfully, record source_alive as
+       "true". Take a screenshot. Read the page text.
+     - If the page fails to load (404, timeout, etc.), record
+       source_alive as "false".
+  6. If source_alive is "false": try the Wayback Machine by
+     opening https://web.archive.org/web/<source_url>.
+     If a snapshot exists, record wayback_url and wayback_date.
+     Open the snapshot and read the text.
+  7. If you were able to read the source text (live or archived),
+     assess whether claim_text is accurately represented:
+     - "accurate": source clearly supports the claim
+     - "misleading": source exists but key facts conflict or
+       are absent from the source
+     - "unsupported": source has no content related to the claim
+     - "source_dead": no live or archived version found
+     Record the rating. Write a 1-2 sentence rationale.
+     Record confidence as "high", "medium", or "low".
+  8. Record source_status as "live", "archived", or "dead".
+  9. Use get_required_fields to verify all required fields are
+     recorded, then stop.
+
+  IMPORTANT: Take a screenshot at every significant navigation
+  step. If a source page requires login or payment, record
+  source_alive as "false" and note it in rationale.
+
+input_columns:
+  - url
+
+output_schema:
+  - name: article_url
+    description: "The Wikipedia article URL (from input)"
+  - name: article_title
+    description: "Title of the Wikipedia article"
+  - name: cite_id
+    description: "Footnote number or reference name of the oldest citation"
+  - name: citation_year
+    description: "Year of the oldest citation"
+  - name: claim_text
+    description: "The Wikipedia sentence that uses this citation"
+  - name: source_url
+    description: "URL of the cited source"
+  - name: source_alive
+    description: "Whether the source URL is accessible: true or false"
+  - name: source_status
+    description: "Status of the source: live, archived, or dead"
+  - name: wayback_url
+    description: "Wayback Machine snapshot URL, if applicable"
+    required: false
+  - name: wayback_date
+    description: "Date of the Wayback Machine snapshot"
+    required: false
+  - name: rating
+    description: "Accuracy rating: accurate, misleading, unsupported, or source_dead"
+  - name: rationale
+    description: "1-2 sentence explanation of the accuracy rating"
+  - name: confidence
+    description: "Confidence level: high, medium, or low"
+
+constraints:
+  - Take a screenshot before extracting data from each page
+  - Do not fabricate citation years or source content
+  - If source requires login or payment, record source_alive as "false"
+  - Focus on the single oldest citation only
+
+max_pages_per_sample: 8
+max_turns: 30

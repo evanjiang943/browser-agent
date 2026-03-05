@@ -1,0 +1,72 @@
+task_name: github-checks
+goal: >
+  Collect audit evidence for GitHub pull requests: PR metadata,
+  CI check results, and linked issue tickets with screenshots.
+
+instructions: |
+  For each sample, you receive a GitHub PR URL.
+
+  1. Open the PR URL. If redirected to login, record an empty string
+     for all fields and stop.
+  2. Take a tiled screenshot of the full PR page.
+  3. Read the page text and extract:
+     - pr_or_commit_id: the PR number from the URL or page
+     - title: the PR title
+     - pr_creator: the username who opened the PR
+     - merge_status: one of "merged", "open", or "closed"
+     - approvers: semicolon-separated list of reviewers who approved
+     - merger: the username who merged (empty if not merged)
+  4. Navigate to the Checks tab (append /checks to the PR URL or
+     click the checks link). Take a screenshot.
+  5. Read the checks page and extract:
+     - check_summary: formatted as "passed=N; failed=N; pending=N"
+     - failed_checks_notes: names of failed checks and whether the
+       PR was merged despite failures. Empty if no failures.
+  6. If there are failed checks (up to 3), click into the CI details
+     page and take a screenshot of the failure logs.
+  7. Search the PR description and commit messages for Jira or Linear
+     ticket links (e.g., atlassian.net/browse/*, linear.app/*).
+     If found, record jira_url. Try to open the ticket and take a
+     screenshot. If the ticket page requires auth, record the URL
+     anyway and note the auth issue — do not abandon the sample.
+  8. Use get_required_fields to verify all required fields are
+     recorded, then stop.
+
+  IMPORTANT: Take a screenshot before extracting data from any page.
+  Record every field even if the value is an empty string.
+
+input_columns:
+  - pr_url
+
+output_schema:
+  - name: github_url
+    description: "The canonical PR URL (may differ from input if redirected)"
+  - name: pr_or_commit_id
+    description: "PR number or commit SHA"
+  - name: pr_creator
+    description: "GitHub username who opened the PR"
+  - name: approvers
+    description: "Semicolon-separated list of approving reviewers"
+  - name: merger
+    description: "GitHub username who merged the PR (empty if not merged)"
+  - name: merge_status
+    description: "One of: merged, open, closed"
+  - name: title
+    description: "PR title text"
+  - name: check_summary
+    description: "CI check counts formatted as 'passed=N; failed=N; pending=N'"
+  - name: failed_checks_notes
+    description: "Names of failed checks and whether merged despite failures"
+    required: false
+  - name: jira_url
+    description: "URL of linked Jira/Linear/GitHub issue ticket, if any"
+    required: false
+
+constraints:
+  - Take a screenshot before extracting data from each new page
+  - Do not fabricate values — if a field is not visible, record an empty string
+  - Use tiled screenshot mode for full-page captures
+  - Close pages you no longer need to free resources
+
+max_pages_per_sample: 10
+max_turns: 30

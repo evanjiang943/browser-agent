@@ -14,6 +14,8 @@ dependencies = [
     "openpyxl>=3.1",
     "pydantic>=2.5",
     "aiohttp>=3.9",
+    "anthropic>=0.39",
+    "python-dotenv>=1.0",
 ]
 
 [project.optional-dependencies]
@@ -21,9 +23,15 @@ dev = [
     "pytest>=7.0",
     "pytest-asyncio>=0.23",
 ]
+web = [
+    "fastapi>=0.109",
+    "uvicorn[standard]>=0.27",
+    "python-multipart>=0.0.6",
+]
 
 [project.scripts]
 evidence-collector = "evidence_collector.cli:app"
+evidence-web = "evidence_collector.web.app:main"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/evidence_collector"]

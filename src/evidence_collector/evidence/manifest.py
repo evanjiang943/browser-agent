@@ -30,6 +30,7 @@ class SampleNotes(BaseModel):
     downloads: list[str] = []
     sub_items: dict[str, SubItemNotes] = {}
     result_data: dict = {}
+    agent_trace_file: str | None = None
 
 
 class RunManifest(BaseModel):

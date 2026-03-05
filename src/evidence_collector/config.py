@@ -31,6 +31,15 @@ class ScreenshotConfig(BaseModel):
     quality: int = 90
 
 
+class AgentConfig(BaseModel):
+    """LLM agent settings."""
+
+    model: str = "claude-sonnet-4-20250514"
+    max_turns: int = 30
+    temperature: float = 0.0
+    api_key_env: str = "ANTHROPIC_API_KEY"
+
+
 class RunConfig(BaseModel):
     """Top-level run configuration."""
 
@@ -38,6 +47,7 @@ class RunConfig(BaseModel):
     throttle: ThrottleConfig = ThrottleConfig()
     screenshot: ScreenshotConfig = ScreenshotConfig()
     concurrency: int = 1
+    agent: AgentConfig = AgentConfig()
 
 
 def load_config(path: str | None = None) -> RunConfig:

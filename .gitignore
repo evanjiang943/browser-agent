@@ -1,6 +1,6 @@
 .DS_Store
 __pycache__/
-tests/manual/_output/
+.env
 
 # Python
 *.py[cod]
@@ -10,6 +10,10 @@ build/
 .venv/
 .pytest_cache/
 .coverage
+
+# Output
+out/
+tests/manual/_output/
 
 # IDE
 .idea/
